@@ -1,8 +1,12 @@
 import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma";
+import logger from "../utils/logger";
+import { HttpError } from "../utils/HttpError";
 
 const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
+
+const OTP_EXPIRATION_MINUTES = 5;
 
 export const requestOtp = async (phone: string) => {
   const user = await prisma.user.findUnique({
@@ -10,15 +14,15 @@ export const requestOtp = async (phone: string) => {
   });
 
   if (!user) {
-    throw new Error("User not registered in this building");
+    throw new HttpError("User not registered in this building", 404);
   }
 
   if (!user.isActive) {
-    throw new Error("User is disabled");
+    throw new HttpError("User is disabled", 403);
   }
 
   const otp = generateOtp();
-  const expires = new Date(Date.now() + 5 * 60 * 1000);
+  const expires = new Date(Date.now() + OTP_EXPIRATION_MINUTES * 60 * 1000);
 
   await prisma.user.update({
     where: { id: user.id },
@@ -27,8 +31,8 @@ export const requestOtp = async (phone: string) => {
       otpExpires: expires,
     },
   });
-
-  console.log("OTP:", otp); // Replace with SMS later
+  
+  logger.info(`OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRATION_MINUTES} minutes)`);
 
   return { message: "OTP sent" };
 };
@@ -46,15 +50,15 @@ export const verifyOtp = async (phone: string, otp: string) => {
   });
 
   if (!user || !user.otpCode || !user.otpExpires) {
-    throw new Error("Invalid request");
+    throw new HttpError("Invalid request", 400);
   }
 
   if (user.otpCode !== otp) {
-    throw new Error("Invalid OTP");
+    throw new HttpError("Invalid OTP", 401);
   }
 
   if (user.otpExpires < new Date()) {
-    throw new Error("OTP expired");
+    throw new HttpError("OTP expired", 401);
   }
 
   const token = jwt.sign(
@@ -88,4 +92,3 @@ export const completeProfile = async (userId: string, name: string) => {
     data: { name },
   });
 };
-
