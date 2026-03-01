@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+// =======================
+// Enums
+// =======================
+enum UserRole {
+  ADMIN
+  RESIDENT
+}
+
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+// =======================
+// Models
+// =======================
+
+model Building {
+  id           String     @id @default(uuid())
+  name         String
+  address      String
+  logoUrl      String?
+  createdAt    DateTime   @default(now())
+
+  apartments   Apartment[]
+  messages     Message[]
+  issues       Issue[]
+  payments     Payment[]
+}
+
+model Apartment {
+  id         String    @id @default(uuid())
+  buildingId String
+  number     String
+  createdAt  DateTime  @default(now())
+
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  users      User[]
+  payments   Payment[]
+
+  @@index([buildingId])
+}
+
+model User {
+  id          String    @id @default(uuid())
+  phone       String    @unique
+  name        String?
+  role        UserRole  @default(RESIDENT)
+  apartmentId String
+  isActive    Boolean   @default(true)
+  otpCode     String?
+  otpExpires  DateTime?
+  createdAt   DateTime  @default(now())
+
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  issues      Issue[]
+
+  @@index([apartmentId])
+}
+
+model Message {
+  id         String    @id @default(uuid())
+  buildingId String
+  title      String
+  content    String
+  isUrgent   Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  building   Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@index([buildingId])
+}
+
+model Issue {
+  id           String      @id @default(uuid())
+  buildingId   String
+  createdById  String
+  location     String
+  category     String
+  description  String
+  imageUrl     String?
+  status       IssueStatus @default(OPEN)
+  adminComment String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  building     Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  createdBy    User        @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([buildingId])
+  @@index([createdById])
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  buildingId  String
+  apartmentId String
+  month       String        // YYYY-MM
+  amount      Decimal
+  status      PaymentStatus @default(PENDING)
+  receiptUrl  String?
+  createdAt   DateTime      @default(now())
+
+  building    Building      @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  apartment   Apartment     @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@index([buildingId])
+  @@index([apartmentId])
+  @@unique([apartmentId, month])
+}
