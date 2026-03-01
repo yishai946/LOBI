@@ -66,7 +66,7 @@ export const verifyOtp = async (phone: string, otp: string) => {
       userId: user.id,
       role: user.role,
       apartmentId: user.apartmentId,
-      buildingId: user.apartment.buildingId,
+      buildingId: user.apartment?.buildingId,
     },
     process.env.JWT_SECRET as string,
     { expiresIn: "7d" },

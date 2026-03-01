@@ -6,11 +6,10 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-// =======================
-// Enums
-// =======================
+
 enum UserRole {
   ADMIN
+  MANAGER
   RESIDENT
 }
 
@@ -24,10 +23,6 @@ enum PaymentStatus {
   PENDING
   PAID
 }
-
-// =======================
-// Models
-// =======================
 
 model Building {
   id           String     @id @default(uuid())
@@ -60,13 +55,13 @@ model User {
   phone       String    @unique
   name        String?
   role        UserRole  @default(RESIDENT)
-  apartmentId String
+  apartmentId String?
   isActive    Boolean   @default(true)
   otpCode     String?
   otpExpires  DateTime?
   createdAt   DateTime  @default(now())
 
-  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  apartment   Apartment? @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
   issues      Issue[]
 
   @@index([apartmentId])
