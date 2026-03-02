@@ -2,6 +2,8 @@ import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma";
 import logger from "../utils/logger";
 import { HttpError } from "../utils/HttpError";
+import { SessionType } from "../enums/sessionType.enum";
+import { sessionInitializers } from "../helpers/auth.helper";
 
 const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
@@ -31,8 +33,10 @@ export const requestOtp = async (phone: string) => {
       otpExpires: expires,
     },
   });
-  
-  logger.info(`OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRATION_MINUTES} minutes)`);
+
+  logger.info(
+    `OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRATION_MINUTES} minutes)`,
+  );
 
   return { message: "OTP sent" };
 };
@@ -41,7 +45,14 @@ export const verifyOtp = async (phone: string, otp: string) => {
   const user = await prisma.user.findUnique({
     where: { phone },
     include: {
-      apartment: {
+      apartments: {
+        include: {
+          apartment: {
+            include: { building: true },
+          },
+        },
+      },
+      manages: {
         include: {
           building: true,
         },
@@ -61,16 +72,29 @@ export const verifyOtp = async (phone: string, otp: string) => {
     throw new HttpError("OTP expired", 401);
   }
 
-  const token = jwt.sign(
-    {
-      userId: user.id,
-      role: user.role,
-      apartmentId: user.apartmentId,
-      buildingId: user.apartment?.buildingId,
-    },
-    process.env.JWT_SECRET as string,
-    { expiresIn: "7d" },
-  );
+  const contexts = [
+    ...user.apartments.map((a) => ({
+      type: "RESIDENT",
+      apartmentId: a.apartment.id,
+      buildingId: a.apartment.buildingId,
+      buildingName: a.apartment.building.name,
+    })),
+    ...user.manages.map((m) => ({
+      type: "MANAGER",
+      buildingId: m.building.id,
+      buildingName: m.building.name,
+    })),
+  ];
+
+ const loginToken = jwt.sign(
+   {
+     userId: user.id,
+     systemRole: user.role,
+     stage: "CONTEXT_SELECTION",
+   },
+   process.env.JWT_SECRET!,
+   { expiresIn: "15m" },
+ );
 
   await prisma.user.update({
     where: { id: user.id },
@@ -81,7 +105,8 @@ export const verifyOtp = async (phone: string, otp: string) => {
   });
 
   return {
-    token,
+    loginToken,
+    contexts,
     needsProfileCompletion: !user.name,
   };
 };
@@ -92,3 +117,13 @@ export const completeProfile = async (userId: string, name: string) => {
     data: { name },
   });
 };
+
+export const selectContext = async (
+  userId: string,
+  type: SessionType,
+  buildingId?: string,
+  apartmentId?: string,
+) => {
+  return sessionInitializers[type](userId, buildingId ?? apartmentId!);
+};
+

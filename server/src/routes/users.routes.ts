@@ -1,17 +1,27 @@
 // src/routes/userRoutes.ts
 import { Router } from "express";
-import { createResident } from "../controllers/users.controller";
-import { requireRole } from "../middlewares/role.middleware";
+import { createManager, createResident } from "../controllers/users.controller";
+import { requireAdmin, requireManager } from "../middlewares/session.middleware";
 import { validate } from "../middlewares/validate.middleware";
-import { createResidentSchema } from "../validators/user.validator";
+import {
+  createManagerSchema,
+  createResidentSchema,
+} from "../validators/user.validator";
 
 const router = Router();
 
 router.post(
   "/resident",
-  requireRole("ADMIN"),
+  requireManager,
   validate(createResidentSchema),
   createResident,
+);
+
+router.post(
+  "/manager",
+  requireAdmin,
+  validate(createManagerSchema),
+  createManager,
 );
 
 export default router;

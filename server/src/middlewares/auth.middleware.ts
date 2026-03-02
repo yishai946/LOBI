@@ -1,35 +1,31 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction, Request } from "express";
 import jwt from "jsonwebtoken";
-import { UserRole } from "../../generated/prisma/enums";
-
-export interface AuthRequest extends Request {
-  user?: {
-    userId: string;
-    role: UserRole;
-    apartmentId: string;
-    buildingId: string;
-  };
-}
+import { SessionPayload } from "../types/auth";
+import { HttpError } from "../utils/HttpError";
 
 export const authMiddleware = (
-  req: AuthRequest,
-  res: Response,
+  req: Request,
+  _: Response,
   next: NextFunction,
 ) => {
-  const header = req.headers.authorization;
-
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const token = header.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+    const authHeader = req.headers.authorization;
 
-    req.user = decoded;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new HttpError("Unauthorized", 401);
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const payload = jwt.verify(
+      token,
+      process.env.JWT_SECRET!,
+    ) as SessionPayload;
+
+    req.user = payload;
+
     next();
   } catch (err) {
-    return res.status(401).json({ message: "Invalid token" });
+    next(new HttpError("Unauthorized", 401));
   }
 };

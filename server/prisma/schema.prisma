@@ -9,8 +9,7 @@ datasource db {
 
 enum UserRole {
   ADMIN
-  MANAGER
-  RESIDENT
+  USER
 }
 
 enum IssueStatus {
@@ -26,12 +25,13 @@ enum PaymentStatus {
 
 model Building {
   id           String     @id @default(uuid())
-  name         String
+  name         String?
   address      String
   logoUrl      String?
   createdAt    DateTime   @default(now())
 
   apartments   Apartment[]
+  managers Manager[]
   messages     Message[]
   issues       Issue[]
   payments     Payment[]
@@ -39,13 +39,13 @@ model Building {
 
 model Apartment {
   id         String    @id @default(uuid())
+  name     String
   buildingId String
-  number     String
   createdAt  DateTime  @default(now())
 
   building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  users      User[]
   payments   Payment[]
+  residents Resident[]
 
   @@index([buildingId])
 }
@@ -54,17 +54,37 @@ model User {
   id          String    @id @default(uuid())
   phone       String    @unique
   name        String?
-  role        UserRole  @default(RESIDENT)
-  apartmentId String?
+  role        UserRole  @default(USER)
   isActive    Boolean   @default(true)
   otpCode     String?
   otpExpires  DateTime?
   createdAt   DateTime  @default(now())
 
-  apartment   Apartment? @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
   issues      Issue[]
 
-  @@index([apartmentId])
+  manages Manager[]
+  apartments Resident[]
+}
+
+model Resident {
+  userId      String
+  apartmentId String
+
+  user        User @relation(fields: [userId], references: [id])
+  apartment   Apartment @relation(fields: [apartmentId], references: [id])
+
+  @@id([userId, apartmentId])
+}
+
+model Manager {
+  id         String    @id @default(uuid())
+  userId     String    
+  buildingId String
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  building   Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, buildingId])
 }
 
 model Message {

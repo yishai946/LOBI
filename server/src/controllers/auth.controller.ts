@@ -1,13 +1,8 @@
 import { Request, Response } from "express";
 import * as authService from "../services/auth.service";
-import { AuthRequest } from "../middlewares/auth.middleware";
 
 export const requestOtp = async (req: Request, res: Response) => {
   const { phone } = req.body;
-
-  if (!phone) {
-    return res.status(400).json({ message: "Phone required" });
-  }
 
   const result = await authService.requestOtp(phone);
   res.json(result);
@@ -16,15 +11,11 @@ export const requestOtp = async (req: Request, res: Response) => {
 export const verifyOtp = async (req: Request, res: Response) => {
   const { phone, otp } = req.body;
 
-  if (!phone || !otp) {
-    return res.status(400).json({ message: "Phone and OTP required" });
-  }
-
   const result = await authService.verifyOtp(phone, otp);
   res.json(result);
 };
 
-export const completeProfile = async (req: AuthRequest, res: Response) => {
+export const completeProfile = async (req: Request, res: Response) => {
   const { name } = req.body;
 
   if (!req.user) {
@@ -44,5 +35,22 @@ export const completeProfile = async (req: AuthRequest, res: Response) => {
       name: updatedUser.name,
     },
   });
+};
+
+export const selectContext = async (req: Request, res: Response) => {
+  const { type, buildingId, apartmentId } = req.body;
+
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const result = await authService.selectContext(
+    req.user.userId,
+    type,
+    buildingId,
+    apartmentId,
+  );
+
+  res.json(result);
 };
 

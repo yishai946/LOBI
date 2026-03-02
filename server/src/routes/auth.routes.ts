@@ -1,11 +1,34 @@
 import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth.middleware";
-import { completeProfile, requestOtp, verifyOtp } from "../controllers/auth.controller";
+import {
+  completeProfile,
+  requestOtp,
+  selectContext,
+  verifyOtp,
+} from "../controllers/auth.controller";
+import { validate } from "../middlewares/validate.middleware";
+import {
+  completeProfileSchema,
+  requestOtpSchema,
+  selectContextSchema,
+  verifyOtpSchema,
+} from "../validators/auth.validaor";
 
 const router = Router();
 
-router.post("/request-otp", requestOtp);
-router.post("/verify-otp", verifyOtp);
-router.post("/complete-profile", authMiddleware, completeProfile);
+router.post("/request-otp", validate(requestOtpSchema), requestOtp);
+router.post("/verify-otp", validate(verifyOtpSchema), verifyOtp);
+router.post(
+  "/complete-profile",
+  authMiddleware,
+  validate(completeProfileSchema),
+  completeProfile,
+);
+router.post(
+  "/select-context",
+  authMiddleware,
+  validate(selectContextSchema),
+  selectContext,
+);
 
 export default router;
