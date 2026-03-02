@@ -72,6 +72,32 @@ export const verifyOtp = async (phone: string, otp: string) => {
     throw new HttpError("OTP expired", 401);
   }
 
+  return user;
+};
+
+export const generateAccessToken = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      apartments: {
+        include: {
+          apartment: {
+            include: { building: true },
+          },
+        },
+      },
+      manages: {
+        include: {
+          building: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new HttpError("User not found", 404);
+  }
+
   const contexts = [
     ...user.apartments.map((a) => ({
       type: "RESIDENT",
@@ -86,29 +112,31 @@ export const verifyOtp = async (phone: string, otp: string) => {
     })),
   ];
 
-  const loginToken = jwt.sign(
-    {
-      userId: user.id,
-      role: user.role,
-      stage: "CONTEXT_SELECTION",
-    },
-    process.env.JWT_SECRET!,
-    { expiresIn: "15m" },
-  );
+  const payload = {
+    userId: user.id,
+    role: user.role,
+    stage: contexts.length > 1 ? "CONTEXT_SELECTION" : "AUTHENTICATED",
+  };
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      otpCode: null,
-      otpExpires: null,
-    },
+  const accessToken = jwt.sign(payload, process.env.ACCESS_SECRET!, {
+    expiresIn: "15m",
   });
 
   return {
-    loginToken,
+    accessToken,
     contexts,
     needsProfileCompletion: !user.name,
   };
+};
+
+export const generateRefreshToken = (userId: string) => {
+  return jwt.sign(
+    { userId },
+    process.env.REFRESH_SECRET!,
+    {
+      expiresIn: "7d",
+    },
+  );
 };
 
 export const completeProfile = async (userId: string, name: string) => {
