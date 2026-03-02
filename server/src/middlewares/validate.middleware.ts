@@ -1,17 +1,25 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodObject } from "zod";
-import { HttpError } from "../utils/HttpError";
+import { ZodObject, ZodError } from "zod";
 
 export const validate =
   (schema: ZodObject<any>) =>
-  (req: Request, _res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      schema.parse(req.body);
+      const validatedData = await schema.parseAsync(req.body);
+
+      req.body = validatedData;
+
       next();
-    } catch (err: any) {
-      throw new HttpError(
-        err.errors.map((e: any) => e.message).join(", "),
-        400,
-      );
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          status: "fail",
+          errors: error.issues.map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+          })),
+        });
+      }
+      return res.status(500).json({ error: "Internal Server Error" });
     }
   };

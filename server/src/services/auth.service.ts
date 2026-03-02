@@ -88,9 +88,9 @@ export const verifyOtp = async (phone: string, otp: string) => {
 
  const loginToken = jwt.sign(
    {
-     userId: user.id,
-     systemRole: user.role,
-     stage: "CONTEXT_SELECTION",
+    userId: user.id,
+    role: user.role,
+    stage: "CONTEXT_SELECTION",
    },
    process.env.JWT_SECRET!,
    { expiresIn: "15m" },
