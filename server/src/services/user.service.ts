@@ -1,5 +1,10 @@
 import { UserRole } from "../../generated/prisma/enums";
 import { SessionType } from "../enums/sessionType.enum";
+import {
+  attachManager,
+  attachResident,
+  getOrCreateUser,
+} from "../helpers/user.helper";
 import prisma from "../lib/prisma";
 import { SessionPayload } from "../types/auth";
 import { HttpError } from "../utils/HttpError";
@@ -26,20 +31,9 @@ export const createResident = async (
     throw new HttpError("Forbidden", 403);
   }
 
-  return await prisma.user.create({
-    data: {
-      phone,
-      apartments: {
-        create: [
-          {
-            apartment: {
-              connect: { id: apartmentId },
-            },
-          },
-        ],
-      },
-    },
-  });
+  const user = await getOrCreateUser(phone);
+
+  return attachResident(user.id, apartmentId);
 };
 
 export const createManager = async ({
@@ -54,16 +48,7 @@ export const createManager = async ({
     throw new HttpError("Building not found", 404);
   }
 
-  return prisma.user.create({
-    data: {
-      phone,
-      manages: {
-        create: {
-          building: {
-            connect: { id: buildingId },
-          },
-        },
-      },
-    },
-  });
+  const user = await getOrCreateUser(phone);
+
+  return attachManager(user.id, buildingId);
 };
