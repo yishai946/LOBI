@@ -31,7 +31,7 @@ model Building {
   createdAt    DateTime   @default(now())
 
   apartments   Apartment[]
-  managers Manager[]
+  managers     Manager[]
   messages     Message[]
   issues       Issue[]
   payments     Payment[]
@@ -45,7 +45,7 @@ model Apartment {
 
   building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   payments   Payment[]
-  residents Resident[]
+  residents  Resident[]
 
   @@index([buildingId])
 }

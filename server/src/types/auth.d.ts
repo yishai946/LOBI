@@ -1,4 +1,5 @@
 import { SessionPayload } from "./auth";
+import { UserRole } from "../../generated/prisma/enums";
 import { Request } from "express";
 
 export interface SessionPayload {

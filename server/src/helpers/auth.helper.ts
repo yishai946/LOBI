@@ -14,7 +14,14 @@ const issueSessionToken = (payload: {
   return { token };
 };
 
-const initializeManagerSession = async (userId: string, buildingId?: string) => {
+const initializeManagerSession = async (
+  userId: string,
+  buildingId?: string,
+) => {
+  if (!buildingId) {
+    throw new HttpError("Building ID required for manager session", 400);
+  }
+
   const relation = await prisma.manager.findUnique({
     where: {
       userId_buildingId: {
@@ -39,6 +46,10 @@ const initializeResidentSession = async (
   userId: string,
   apartmentId?: string,
 ) => {
+  if (!apartmentId) {
+    throw new HttpError("Apartment ID required for resident session", 400);
+  }
+  
   const relation = await prisma.resident.findUnique({
     where: {
       userId_apartmentId: {
@@ -64,11 +75,20 @@ const initializeResidentSession = async (
   });
 };
 
-const initializeAdminSession = async (userId: string) => issueSessionToken({
-  userId,
-  sessionType: SessionType.ADMIN,
-});
+const initializeAdminSession = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
 
+  if (user?.role !== "ADMIN") {
+    throw new HttpError("Not an admin", 403);
+  }
+
+  return issueSessionToken({
+    userId,
+    sessionType: SessionType.ADMIN,
+  });
+};
 
 export const sessionInitializers: Record<
   SessionType,

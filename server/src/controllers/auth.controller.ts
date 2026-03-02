@@ -39,11 +39,7 @@ export const completeProfile = async (req: Request, res: Response) => {
 
 export const selectContext = async (req: Request, res: Response) => {
   const { type, buildingId, apartmentId } = req.body;
-
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
+  
   const result = await authService.selectContext(
     req.user.userId,
     type,

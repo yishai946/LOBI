@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { SessionType } from "../enums/sessionType.enum";
 
 export const requestOtpSchema = z.object({
   phone: z
@@ -25,7 +24,7 @@ export const completeProfileSchema = z.object({
 });
 
 export const selectContextSchema = z.object({
-  sessionType: z.enum(SessionType),
+  type: z.enum(['ADMIN', 'RESIDENT', 'MANAGER']),
   buildingId: z.uuid().optional(),
   apartmentId: z.uuid().optional(),
 });

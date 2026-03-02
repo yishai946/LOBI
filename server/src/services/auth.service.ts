@@ -86,15 +86,15 @@ export const verifyOtp = async (phone: string, otp: string) => {
     })),
   ];
 
- const loginToken = jwt.sign(
-   {
-    userId: user.id,
-    role: user.role,
-    stage: "CONTEXT_SELECTION",
-   },
-   process.env.JWT_SECRET!,
-   { expiresIn: "15m" },
- );
+  const loginToken = jwt.sign(
+    {
+      userId: user.id,
+      role: user.role,
+      stage: "CONTEXT_SELECTION",
+    },
+    process.env.JWT_SECRET!,
+    { expiresIn: "15m" },
+  );
 
   await prisma.user.update({
     where: { id: user.id },
@@ -124,6 +124,12 @@ export const selectContext = async (
   buildingId?: string,
   apartmentId?: string,
 ) => {
-  return sessionInitializers[type](userId, buildingId ?? apartmentId!);
-};
+  const id =
+    type === SessionType.MANAGER
+      ? buildingId
+      : type === SessionType.RESIDENT
+        ? apartmentId
+        : undefined;
 
+  return sessionInitializers[type](userId, id);
+};

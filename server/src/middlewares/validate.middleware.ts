@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodObject, ZodError } from "zod";
+import { HttpError } from "../utils/HttpError";
 
 export const validate =
   (schema: ZodObject<any>) =>
@@ -12,14 +13,12 @@ export const validate =
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        return res.status(400).json({
-          status: "fail",
-          errors: error.issues.map((issue) => ({
-            path: issue.path.join("."),
-            message: issue.message,
-          })),
-        });
+        const errorMessage = error.issues
+          .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+          .join(", ");
+        throw new HttpError(errorMessage, 400);
       }
-      return res.status(500).json({ error: "Internal Server Error" });
+
+      throw new HttpError("Internal Server Error", 500);
     }
   };
