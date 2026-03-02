@@ -39,16 +39,18 @@ model Building {
 
 model Apartment {
   id         String    @id @default(uuid())
-  name     String
+  name       String
   buildingId String
   createdAt  DateTime  @default(now())
 
-  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  building   Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   payments   Payment[]
   residents  Resident[]
 
+  @@unique([buildingId, name])
   @@index([buildingId])
 }
+
 
 model User {
   id          String    @id @default(uuid())

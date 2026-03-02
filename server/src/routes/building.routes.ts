@@ -1,4 +1,3 @@
-// src/routes/userRoutes.ts
 import { Router } from "express";
 import { requireAdmin } from "../middlewares/session.middleware";
 import { validate } from "../middlewares/validate.middleware";

@@ -1,4 +1,3 @@
-// src/routes/userRoutes.ts
 import { Router } from "express";
 import { createManager, createResident } from "../controllers/users.controller";
 import { requireAdmin, requireManager } from "../middlewares/session.middleware";
