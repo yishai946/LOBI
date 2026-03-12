@@ -19,7 +19,7 @@ export const authMiddleware = (
 
     const payload = jwt.verify(
       token,
-      process.env.JWT_SECRET!,
+      process.env.ACCESS_SECRET!,
     ) as SessionPayload;
 
     req.user = payload;

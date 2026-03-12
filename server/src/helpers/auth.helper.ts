@@ -9,7 +9,7 @@ const issueSessionToken = (payload: {
   buildingId?: string;
   apartmentId?: string;
 }) => {
-  const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: "7d" });
+  const token = jwt.sign(payload, process.env.ACCESS_SECRET!, { expiresIn: "7d" });
 
   return { token };
 };

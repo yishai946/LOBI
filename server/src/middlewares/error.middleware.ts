@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { HttpError } from "../utils/HttpError";
 import logger from "../utils/logger";
+import { Prisma } from "../../generated/prisma/client";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -16,6 +17,14 @@ export const errorHandler = (
   if (err instanceof HttpError) {
     statusCode = err.statusCode;
     message = err.message;
+  }
+
+  if (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === "P2002"
+  ) {
+    statusCode = 400;
+    message = "Resource already exists";
   }
 
   logger.error({

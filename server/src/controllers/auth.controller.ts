@@ -34,7 +34,7 @@ export const refreshToken = async (req: Request, res: Response) => {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as {
+    const payload = jwt.verify(token, process.env.REFRESH_SECRET!) as {
       userId: string;
     };
 
