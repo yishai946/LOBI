@@ -44,8 +44,8 @@ model Apartment {
   createdAt  DateTime  @default(now())
 
   building   Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  payments   Payment[]
   residents  Resident[]
+  paymentAssignments PaymentAssignment[]
 
   @@unique([buildingId, name])
   @@index([buildingId])
@@ -63,6 +63,7 @@ model User {
   createdAt   DateTime  @default(now())
 
   issues      Issue[]
+  paymentAssignments PaymentAssignment[]
 
   manages Manager[]
   apartments Resident[]
@@ -117,25 +118,57 @@ model Issue {
 
   building     Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   createdBy    User        @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  images       IssueImage[]
 
   @@index([buildingId])
   @@index([createdById])
 }
 
 model Payment {
-  id          String        @id @default(uuid())
-  buildingId  String
-  apartmentId String
-  month       String        // YYYY-MM
-  amount      Decimal
-  status      PaymentStatus @default(PENDING)
-  receiptUrl  String?
-  createdAt   DateTime      @default(now())
+  id              String        @id @default(uuid())
+  title           String
+  description     String?
+  amount          Decimal
+  currency        String        @default("ILS")
+  buildingId      String
+  stripeSessionId String?       @unique
+  isRecurring     Boolean       @default(false)
+  status          PaymentStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
 
-  building    Building      @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  apartment   Apartment     @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  building        Building      @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  assignments     PaymentAssignment[]
 
   @@index([buildingId])
+}
+
+model PaymentAssignment {
+  id              String        @id @default(uuid())
+  paymentId       String
+  apartmentId     String
+  status          PaymentStatus @default(PENDING)
+  stripeSessionId String?       @unique
+  paidAt          DateTime?
+  paidById        String?
+  createdAt       DateTime      @default(now())
+
+  payment         Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  apartment       Apartment     @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  paidBy          User?         @relation(fields: [paidById], references: [id], onDelete: SetNull)
+
+  @@unique([paymentId, apartmentId])
+  @@index([paymentId])
   @@index([apartmentId])
-  @@unique([apartmentId, month])
+}
+
+model IssueImage {
+  id        String   @id @default(uuid())
+  issueId   String
+  imageKey  String
+  imageUrl  String
+  createdAt DateTime @default(now())
+
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
 }
