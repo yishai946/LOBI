@@ -4,6 +4,7 @@ import { HttpError } from "../utils/HttpError";
 import {
   CheckoutPaymentCommand,
   CreatePaymentCommand,
+  UpdatePaymentCommand,
 } from "../validators/payment.validator";
 import { SessionPayload } from "../types/auth";
 import { PaymentStatus } from "../../generated/prisma/enums";
@@ -113,6 +114,12 @@ export const getPayments = async (
   currentUser: SessionPayload,
   buildingId?: string,
 ) => {
+  if (currentUser.sessionType === SessionType.ADMIN && !buildingId) {
+    return prisma.payment.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
   const targetBuildingId = resolveBuildingId(currentUser, buildingId);
 
   const payments = await prisma.payment.findMany({
@@ -161,6 +168,110 @@ export const getPayments = async (
       pending: 0,
     },
   }));
+};
+
+export const getPaymentById = async (
+  currentUser: SessionPayload,
+  paymentId: string,
+) => {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+  });
+
+  if (!payment) {
+    throw new HttpError("Payment not found", 404);
+  }
+
+  if (
+    currentUser.sessionType !== SessionType.ADMIN &&
+    currentUser.buildingId !== payment.buildingId
+  ) {
+    throw new HttpError("Forbidden", 403);
+  }
+
+  return payment;
+};
+
+export const updatePayment = async (
+  currentUser: SessionPayload,
+  paymentId: string,
+  data: UpdatePaymentCommand,
+) => {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+  });
+
+  if (!payment) {
+    throw new HttpError("Payment not found", 404);
+  }
+
+  if (
+    currentUser.sessionType !== SessionType.ADMIN &&
+    currentUser.buildingId !== payment.buildingId
+  ) {
+    throw new HttpError("Forbidden", 403);
+  }
+
+  if (data.amount && data.amount <= 0) {
+    throw new HttpError("Amount must be greater than 0", 400);
+  }
+
+  return prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      title: data.title,
+      description: data.description,
+      amount: data.amount ? new Prisma.Decimal(data.amount) : undefined,
+      isRecurring: data.isRecurring,
+    },
+  });
+};
+
+export const deletePayment = async (
+  currentUser: SessionPayload,
+  paymentId: string,
+) => {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+  });
+
+  if (!payment) {
+    throw new HttpError("Payment not found", 404);
+  }
+
+  if (
+    currentUser.sessionType !== SessionType.ADMIN &&
+    currentUser.buildingId !== payment.buildingId
+  ) {
+    throw new HttpError("Forbidden", 403);
+  }
+
+  return prisma.payment.delete({ where: { id: paymentId } });
+};
+
+export const getAssignmentsForPayment = async (
+  currentUser: SessionPayload,
+  paymentId: string,
+) => {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+  });
+
+  if (!payment) {
+    throw new HttpError("Payment not found", 404);
+  }
+
+  if (
+    currentUser.sessionType !== SessionType.ADMIN &&
+    currentUser.buildingId !== payment.buildingId
+  ) {
+    throw new HttpError("Forbidden", 403);
+  }
+
+  return prisma.paymentAssignment.findMany({
+    where: { paymentId },
+    include: { apartment: true },
+  });
 };
 
 export const getMyPayments = async (currentUser: SessionPayload) => {

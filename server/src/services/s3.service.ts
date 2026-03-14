@@ -1,5 +1,7 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "crypto";
+import path from "path";
 
 const client = new S3Client({
   region: process.env.AWS_REGION,
@@ -9,19 +11,37 @@ const client = new S3Client({
   },
 });
 
-export const getPresignedUploadUrl = async (
-  key: string,
-  contentType: string,
+const buildKey = (buildingId: string, apartmentId: string, filename: string) => {
+  const extension = path.extname(filename).replace(".", "");
+  if (!extension) {
+    throw new Error("File extension is required");
+  }
+
+  return `issues/${buildingId}/${apartmentId}/${randomUUID()}.${extension}`;
+};
+
+export const generateUploadUrls = async (
+  files: Array<{ filename: string; contentType: string }>,
+  buildingId: string,
+  apartmentId: string,
 ) => {
-  const command = new PutObjectCommand({
-    Bucket: process.env.AWS_BUCKET_NAME,
-    Key: key,
-    ContentType: contentType,
-  });
+  const uploads = [];
 
-  const uploadUrl = await getSignedUrl(client, command, { expiresIn: 60 * 5 });
+  for (const file of files) {
+    const key = buildKey(buildingId, apartmentId, file.filename);
 
-  const imageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: key,
+      ContentType: file.contentType,
+    });
 
-  return { uploadUrl, imageUrl };
+    const uploadUrl = await getSignedUrl(client, command, {
+      expiresIn: 60 * 5,
+    });
+
+    uploads.push({ key, uploadUrl });
+  }
+
+  return uploads;
 };

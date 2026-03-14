@@ -19,10 +19,53 @@ export const getPayments = async (req: Request, res: Response) => {
   res.json(payments);
 };
 
+export const getPaymentById = async (req: Request, res: Response) => {
+  const payment = await paymentService.getPaymentById(
+    req.user,
+    req.params.paymentId as string,
+  );
+
+  res.json(payment);
+};
+
+export const updatePayment = async (req: Request, res: Response) => {
+  const payment = await paymentService.updatePayment(
+    req.user,
+    req.params.paymentId as string,
+    req.body,
+  );
+
+  res.json({
+    message: "Payment updated successfully",
+    payment,
+  });
+};
+
+export const deletePayment = async (req: Request, res: Response) => {
+  const payment = await paymentService.deletePayment(
+    req.user,
+    req.params.paymentId as string,
+  );
+
+  res.json({
+    message: "Payment deleted successfully",
+    payment,
+  });
+};
+
 export const getMyPayments = async (req: Request, res: Response) => {
   const payments = await paymentService.getMyPayments(req.user);
 
   res.json(payments);
+};
+
+export const getPaymentAssignments = async (req: Request, res: Response) => {
+  const assignments = await paymentService.getAssignmentsForPayment(
+    req.user,
+    req.params.paymentId as string,
+  );
+
+  res.json(assignments);
 };
 
 export const createCheckoutSession = async (req: Request, res: Response) => {

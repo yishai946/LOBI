@@ -1,4 +1,3 @@
-import { UserRole } from "../../generated/prisma/enums";
 import { SessionType } from "../enums/sessionType.enum";
 import {
   attachManager,
@@ -11,6 +10,7 @@ import { HttpError } from "../utils/HttpError";
 import {
   CreateManagerCommand,
   CreateResidentCommand,
+  UpdateMeCommand,
 } from "../validators/user.validator";
 
 export const createResident = async (
@@ -51,4 +51,36 @@ export const createManager = async ({
   const user = await getOrCreateUser(phone);
 
   return attachManager(user.id, buildingId);
+};
+
+export const getMe = async (currentUser: SessionPayload) => {
+  return prisma.user.findUnique({
+    where: { id: currentUser.userId },
+  });
+};
+
+export const updateMe = async (
+  currentUser: SessionPayload,
+  data: UpdateMeCommand,
+) => {
+  if (!data.name) {
+    throw new HttpError("No updates provided", 400);
+  }
+
+  return prisma.user.update({
+    where: { id: currentUser.userId },
+    data: { name: data.name },
+  });
+};
+
+export const getAllUsers = async () => {
+  return prisma.user.findMany();
+};
+
+export const getUserById = async (userId: string) => {
+  return prisma.user.findUnique({ where: { id: userId } });
+};
+
+export const deleteUser = async (userId: string) => {
+  return prisma.user.delete({ where: { id: userId } });
 };

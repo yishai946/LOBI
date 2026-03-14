@@ -18,3 +18,39 @@ export const createManager = async (req: Request, res: Response) => {
     manager,
   });
 };
+
+export const getMe = async (req: Request, res: Response) => {
+  const user = await userService.getMe(req.user);
+
+  res.json(user);
+};
+
+export const updateMe = async (req: Request, res: Response) => {
+  const user = await userService.updateMe(req.user, req.body);
+
+  res.json({
+    message: "Profile updated successfully",
+    user,
+  });
+};
+
+export const getUsers = async (_req: Request, res: Response) => {
+  const users = await userService.getAllUsers();
+
+  res.json(users);
+};
+
+export const getUserById = async (req: Request, res: Response) => {
+  const user = await userService.getUserById(req.params.userId as string);
+
+  res.json(user);
+};
+
+export const deleteUser = async (req: Request, res: Response) => {
+  const user = await userService.deleteUser(req.params.userId as string);
+
+  res.json({
+    message: "User deleted successfully",
+    user,
+  });
+};

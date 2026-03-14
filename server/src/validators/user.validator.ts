@@ -21,5 +21,10 @@ export const createManagerSchema = z.object({
   buildingId: z.uuid("Invalid building ID"),
 });
 
+export const updateMeSchema = z.object({
+  name: z.string().min(1, "Name is required").optional(),
+});
+
 export type CreateResidentCommand = z.infer<typeof createResidentSchema>;
 export type CreateManagerCommand = z.infer<typeof createManagerSchema>;
+export type UpdateMeCommand = z.infer<typeof updateMeSchema>;

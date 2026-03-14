@@ -72,7 +72,29 @@ export const verifyOtp = async (phone: string, otp: string) => {
     throw new HttpError("OTP expired", 401);
   }
 
-  return user;
+  const verifiedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      otpCode: null,
+      otpExpires: null,
+    },
+    include: {
+      apartments: {
+        include: {
+          apartment: {
+            include: { building: true },
+          },
+        },
+      },
+      manages: {
+        include: {
+          building: true,
+        },
+      },
+    },
+  });
+
+  return verifiedUser;
 };
 
 export const generateAccessToken = async (userId: string) => {
@@ -130,13 +152,9 @@ export const generateAccessToken = async (userId: string) => {
 };
 
 export const generateRefreshToken = (userId: string) => {
-  return jwt.sign(
-    { userId },
-    process.env.REFRESH_SECRET!,
-    {
-      expiresIn: "7d",
-    },
-  );
+  return jwt.sign({ userId }, process.env.REFRESH_SECRET!, {
+    expiresIn: "7d",
+  });
 };
 
 export const completeProfile = async (userId: string, name: string) => {

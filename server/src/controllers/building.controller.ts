@@ -24,4 +24,25 @@ export const getBuildingById = async (req: Request, res: Response) => {
   }
 
   res.json(building);
-}
+};
+
+export const updateBuilding = async (req: Request, res: Response) => {
+  const building = await buildingService.update(
+    req.params.id as string,
+    req.body,
+  );
+
+  res.json({
+    message: "Building updated successfully",
+    building,
+  });
+};
+
+export const deleteBuilding = async (req: Request, res: Response) => {
+  const building = await buildingService.remove(req.params.id as string);
+
+  res.json({
+    message: "Building deleted successfully",
+    building,
+  });
+};

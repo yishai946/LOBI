@@ -12,12 +12,6 @@ enum UserRole {
   USER
 }
 
-enum IssueStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-}
-
 enum PaymentStatus {
   PENDING
   PAID
@@ -46,6 +40,7 @@ model Apartment {
   building   Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   residents  Resident[]
   paymentAssignments PaymentAssignment[]
+  issues     Issue[]
 
   @@unique([buildingId, name])
   @@index([buildingId])
@@ -70,6 +65,7 @@ model User {
 }
 
 model Resident {
+  id          String?  @unique @default(uuid())
   userId      String
   apartmentId String
 
@@ -104,23 +100,21 @@ model Message {
 }
 
 model Issue {
-  id           String      @id @default(uuid())
-  buildingId   String
+  id           String    @id @default(uuid())
+  title        String
+  description  String?
   createdById  String
-  location     String
-  category     String
-  description  String
-  imageUrl     String?
-  status       IssueStatus @default(OPEN)
-  adminComment String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  buildingId   String
+  apartmentId  String
+  createdAt    DateTime  @default(now())
 
-  building     Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  createdBy    User        @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  building     Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  apartment    Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  createdBy    User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
   images       IssueImage[]
 
   @@index([buildingId])
+  @@index([apartmentId])
   @@index([createdById])
 }
 
@@ -165,7 +159,6 @@ model IssueImage {
   id        String   @id @default(uuid())
   issueId   String
   imageKey  String
-  imageUrl  String
   createdAt DateTime @default(now())
 
   issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)

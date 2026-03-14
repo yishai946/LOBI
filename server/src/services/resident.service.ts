@@ -1,0 +1,122 @@
+import prisma from "../lib/prisma";
+import { HttpError } from "../utils/HttpError";
+import { SessionPayload } from "../types/auth";
+import { SessionType } from "../enums/sessionType.enum";
+import {
+  CreateResidentCommand,
+  UpdateResidentCommand,
+} from "../validators/resident.validator";
+
+const ensureBuildingAccess = async (
+  currentUser: SessionPayload,
+  buildingId: string,
+) => {
+  if (currentUser.sessionType === SessionType.ADMIN) return;
+
+  if (currentUser.buildingId !== buildingId) {
+    throw new HttpError("Forbidden", 403);
+  }
+};
+
+export const createResident = async (
+  currentUser: SessionPayload,
+  data: CreateResidentCommand,
+) => {
+  const apartment = await prisma.apartment.findUnique({
+    where: { id: data.apartmentId },
+    select: { buildingId: true },
+  });
+
+  if (!apartment) throw new HttpError("Apartment not found", 404);
+
+  await ensureBuildingAccess(currentUser, apartment.buildingId);
+
+  return prisma.resident.create({
+    data: {
+      userId: data.userId,
+      apartmentId: data.apartmentId,
+    },
+  });
+};
+
+export const getResidents = async (currentUser: SessionPayload) => {
+  if (currentUser.sessionType === SessionType.ADMIN) {
+    return prisma.resident.findMany({
+      include: { user: true, apartment: true },
+    });
+  }
+
+  if (!currentUser.buildingId) {
+    throw new HttpError("Building context required", 400);
+  }
+
+  return prisma.resident.findMany({
+    where: { apartment: { buildingId: currentUser.buildingId } },
+    include: { user: true, apartment: true },
+  });
+};
+
+export const getResidentById = async (
+  currentUser: SessionPayload,
+  residentId: string,
+) => {
+  const resident = await prisma.resident.findUnique({
+    where: { id: residentId },
+    include: { user: true, apartment: true },
+  });
+
+  if (!resident) throw new HttpError("Resident not found", 404);
+
+  await ensureBuildingAccess(currentUser, resident.apartment.buildingId);
+
+  return resident;
+};
+
+export const updateResident = async (
+  currentUser: SessionPayload,
+  residentId: string,
+  data: UpdateResidentCommand,
+) => {
+  const resident = await prisma.resident.findUnique({
+    where: { id: residentId },
+    include: { apartment: true },
+  });
+
+  if (!resident) throw new HttpError("Resident not found", 404);
+
+  await ensureBuildingAccess(currentUser, resident.apartment.buildingId);
+
+  if (!data.apartmentId) {
+    throw new HttpError("No updates provided", 400);
+  }
+
+  const newApartment = await prisma.apartment.findUnique({
+    where: { id: data.apartmentId },
+    select: { buildingId: true },
+  });
+
+  if (!newApartment) throw new HttpError("Apartment not found", 404);
+
+  await ensureBuildingAccess(currentUser, newApartment.buildingId);
+
+  return prisma.resident.update({
+    where: { id: residentId },
+    data: { apartmentId: data.apartmentId },
+  });
+};
+
+export const deleteResident = async (
+  currentUser: SessionPayload,
+  residentId: string,
+) => {
+  const resident = await prisma.resident.findUnique({
+    where: { id: residentId },
+    include: { apartment: true },
+  });
+
+  if (!resident) throw new HttpError("Resident not found", 404);
+
+  await ensureBuildingAccess(currentUser, resident.apartment.buildingId);
+
+  return prisma.resident.delete({ where: { id: residentId } });
+};

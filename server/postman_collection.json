@@ -222,6 +222,21 @@
       "name": "Issues",
       "item": [
         {
+          "name": "Generate Upload URLs (Resident)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{residentToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/issues/upload-urls", "host": ["{{baseUrl}}"], "path": ["api", "issues", "upload-urls"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"files\":[{\"filename\":\"leak.jpg\",\"contentType\":\"image/jpeg\"}]}"
+            }
+          }
+        },
+        {
           "name": "Create Issue (Resident)",
           "request": {
             "method": "POST",
@@ -232,48 +247,8 @@
             "url": { "raw": "{{baseUrl}}/api/issues", "host": ["{{baseUrl}}"], "path": ["api", "issues"] },
             "body": {
               "mode": "raw",
-              "raw": "{\"location\":\"Lobby\",\"category\":\"Plumbing\",\"description\":\"Leak\",\"images\":[{\"fileName\":\"leak.jpg\",\"contentType\":\"image/jpeg\"}]}"
+              "raw": "{\"title\":\"Leak\",\"description\":\"Lobby leak\",\"imageKeys\":[\"issues/{{buildingId}}/{{apartmentId}}/uuid.jpg\"]}"
             }
-          }
-        },
-        {
-          "name": "Get My Issues (Resident)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{residentToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/issues/mine", "host": ["{{baseUrl}}"], "path": ["api", "issues", "mine"] }
-          }
-        },
-        {
-          "name": "Get Issues (Manager)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{managerToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/issues", "host": ["{{baseUrl}}"], "path": ["api", "issues"] }
-          }
-        },
-        {
-          "name": "Update Issue (Manager)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{managerToken}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/api/issues/{{issueId}}", "host": ["{{baseUrl}}"], "path": ["api", "issues", "{{issueId}}"] },
-            "body": { "mode": "raw", "raw": "{\"status\":\"IN_PROGRESS\",\"adminComment\":\"Scheduled\"}" }
-          }
-        },
-        {
-          "name": "Upload URL (Resident - Legacy)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{residentToken}}" }
-            ],
-            "url": { "raw": "{{baseUrl}}/api/issues/upload-url", "host": ["{{baseUrl}}"], "path": ["api", "issues", "upload-url"] },
-            "body": { "mode": "raw", "raw": "{\"issueId\":\"{{issueId}}\",\"fileName\":\"leak.jpg\",\"contentType\":\"image/jpeg\"}" }
           }
         }
       ]

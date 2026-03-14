@@ -9,3 +9,43 @@ export const createApartment = async (req: Request, res: Response) => {
     apartment,
   });
 };
+
+export const getApartments = async (req: Request, res: Response) => {
+  const apartments = await apartmentService.getAll(req.user);
+
+  res.json(apartments);
+};
+
+export const getApartmentById = async (req: Request, res: Response) => {
+  const apartment = await apartmentService.getById(
+    req.user,
+    req.params.id as string,
+  );
+
+  res.json(apartment);
+};
+
+export const updateApartment = async (req: Request, res: Response) => {
+  const apartment = await apartmentService.update(
+    req.user,
+    req.params.id as string,
+    req.body,
+  );
+
+  res.json({
+    message: "Apartment updated successfully",
+    apartment,
+  });
+};
+
+export const deleteApartment = async (req: Request, res: Response) => {
+  const apartment = await apartmentService.remove(
+    req.user,
+    req.params.id as string,
+  );
+
+  res.json({
+    message: "Apartment deleted successfully",
+    apartment,
+  });
+};

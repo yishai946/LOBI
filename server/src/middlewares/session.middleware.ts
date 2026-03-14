@@ -30,6 +30,21 @@ export const requireResident = (
   next();
 };
 
+export const requireManagerOrResident = (
+  req: Request,
+  _: Response,
+  next: NextFunction,
+) => {
+  if (
+    req.user.sessionType !== SessionType.MANAGER &&
+    req.user.sessionType !== SessionType.RESIDENT &&
+    req.user.sessionType !== SessionType.ADMIN
+  ) {
+    return next(new HttpError("Forbidden", 403));
+  }
+  next();
+};
+
 export const requireAdmin = (req: Request, _: Response, next: NextFunction) => {
   if (req.user.sessionType !== SessionType.ADMIN) {
     return next(new HttpError("Forbidden: Admin only", 403));

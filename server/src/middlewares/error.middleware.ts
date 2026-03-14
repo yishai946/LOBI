@@ -27,6 +27,14 @@ export const errorHandler = (
     message = "Resource already exists";
   }
 
+  if (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === "P2025"
+  ) {
+    statusCode = 404;
+    message = "Resource not found";
+  }
+
   logger.error({
     method: req.method,
     url: req.originalUrl,
@@ -38,5 +46,4 @@ export const errorHandler = (
   res.status(statusCode).json({
     message: isDev ? err.message : message,
   });
-
 };
