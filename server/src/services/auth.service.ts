@@ -9,6 +9,24 @@ const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
 const OTP_EXPIRATION_MINUTES = 5;
+const OTP_RESEND_COOLDOWN_SECONDS = 60;
+
+const issueOtpForUser = async (userId: string, phone: string) => {
+  const otp = generateOtp();
+  const expires = new Date(Date.now() + OTP_EXPIRATION_MINUTES * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      otpCode: otp,
+      otpExpires: expires,
+    },
+  });
+
+  logger.info(
+    `OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRATION_MINUTES} minutes)`,
+  );
+};
 
 export const requestOtp = async (phone: string) => {
   const user = await prisma.user.findUnique({
@@ -23,22 +41,42 @@ export const requestOtp = async (phone: string) => {
     throw new HttpError("User is disabled", 403);
   }
 
-  const otp = generateOtp();
-  const expires = new Date(Date.now() + OTP_EXPIRATION_MINUTES * 60 * 1000);
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      otpCode: otp,
-      otpExpires: expires,
-    },
-  });
-
-  logger.info(
-    `OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRATION_MINUTES} minutes)`,
-  );
+  await issueOtpForUser(user.id, phone);
 
   return { message: "OTP sent" };
+};
+
+export const resendOtp = async (phone: string) => {
+  const user = await prisma.user.findUnique({
+    where: { phone },
+  });
+
+  if (!user) {
+    throw new HttpError("User not registered in this building", 404);
+  }
+
+  if (!user.isActive) {
+    throw new HttpError("User is disabled", 403);
+  }
+
+  if (!user.otpCode || !user.otpExpires) {
+    throw new HttpError("Request OTP first", 400);
+  }
+
+  const lastOtpIssuedAt = new Date(
+    user.otpExpires.getTime() - OTP_EXPIRATION_MINUTES * 60 * 1000,
+  );
+  const resendAvailableAt = new Date(
+    lastOtpIssuedAt.getTime() + OTP_RESEND_COOLDOWN_SECONDS * 1000,
+  );
+
+  if (resendAvailableAt > new Date()) {
+    throw new HttpError("OTP can be resent only after 1 minute", 429);
+  }
+
+  await issueOtpForUser(user.id, phone);
+
+  return { message: "OTP resent" };
 };
 
 export const verifyOtp = async (phone: string, otp: string) => {

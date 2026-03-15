@@ -60,6 +60,47 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
 
+  /api/auth/resend-otp:
+    post:
+      tags: [Auth]
+      summary: Resend OTP
+      description: Resends OTP for a registered and active user. Available only after 1 minute from the previous OTP issue time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestOtpRequest"
+            examples:
+              valid:
+                value:
+                  phone: "0501234567"
+      responses:
+        "200":
+          description: OTP resent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                success:
+                  value:
+                    message: OTP resent
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          description: OTP can be resent only after 1 minute
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
   /api/auth/verify-otp:
     post:
       tags: [Auth]

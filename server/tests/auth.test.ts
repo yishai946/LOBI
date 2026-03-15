@@ -33,6 +33,43 @@ describe("Auth routes", () => {
     expect(res.status).toBe(404);
   });
 
+  it("rejects OTP resend before one minute has passed", async () => {
+    const phone = `05${Math.floor(10000000 + Math.random() * 90000000)}`;
+    await prisma.user.create({
+      data: {
+        phone,
+        otpCode: "111111",
+        otpExpires: new Date(Date.now() + 1000 * 60 * 5),
+      },
+    });
+
+    const res = await request(app).post("/api/auth/resend-otp").send({ phone });
+
+    expect(res.status).toBe(429);
+  });
+
+  it("resends OTP after one minute", async () => {
+    const phone = `05${Math.floor(10000000 + Math.random() * 90000000)}`;
+    const user = await prisma.user.create({
+      data: {
+        phone,
+        otpCode: "111111",
+        otpExpires: new Date(Date.now() + 1000 * 60 * 4 - 1000),
+      },
+    });
+
+    const res = await request(app).post("/api/auth/resend-otp").send({ phone });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("OTP resent");
+
+    const updated = await prisma.user.findUnique({ where: { id: user.id } });
+    expect(updated?.otpCode).toBeTruthy();
+    expect(updated?.otpCode).not.toBe("111111");
+    expect(updated?.otpExpires).toBeTruthy();
+    expect(updated!.otpExpires!.getTime()).toBeGreaterThan(Date.now());
+  });
+
   it("rejects invalid OTP", async () => {
     const phone = `05${Math.floor(10000000 + Math.random() * 90000000)}`;
     await prisma.user.create({

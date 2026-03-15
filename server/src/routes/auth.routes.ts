@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import {
   completeProfile,
+  resendOtp,
   refreshToken,
   requestOtp,
   selectContext,
@@ -18,6 +19,7 @@ import {
 const router = Router();
 
 router.post("/request-otp", validate(requestOtpSchema), requestOtp);
+router.post("/resend-otp", validate(requestOtpSchema), resendOtp);
 router.post("/verify-otp", validate(verifyOtpSchema), verifyOtp);
 router.post("/refresh", refreshToken);
 router.post(

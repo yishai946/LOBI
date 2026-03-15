@@ -11,7 +11,24 @@ import { PaymentStatus } from "../../generated/prisma/enums";
 import { Prisma } from "../../generated/prisma/client";
 import { SessionType } from "../enums/sessionType.enum";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+let stripeClient: Stripe | null = null;
+
+const getStripeClient = () => {
+  if (stripeClient) {
+    return stripeClient;
+  }
+
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (!apiKey) {
+    throw new HttpError(
+      "STRIPE_SECRET_KEY is not configured. Add it to your environment.",
+      500,
+    );
+  }
+
+  stripeClient = new Stripe(apiKey);
+  return stripeClient;
+};
 
 const DEFAULT_CURRENCY = "ILS";
 
@@ -81,11 +98,8 @@ export const createPayment = async (
   return { payment };
 };
 
-export const constructStripeEvent = (
-  payload: Buffer,
-  signature: string,
-) => {
-  return stripe.webhooks.constructEvent(
+export const constructStripeEvent = (payload: Buffer, signature: string) => {
+  return getStripeClient().webhooks.constructEvent(
     payload,
     signature,
     process.env.STRIPE_WEBHOOK_SECRET!,
@@ -324,7 +338,7 @@ export const createCheckoutSession = async (
   }
 
   const baseUrl = origin || "http://localhost:3000";
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripeClient().checkout.sessions.create({
     mode: requestedRecurring ? "subscription" : "payment",
     payment_method_types: ["card"],
     line_items: [
@@ -336,9 +350,7 @@ export const createCheckoutSession = async (
             description: assignment.payment.description ?? undefined,
           },
           unit_amount: unitAmount,
-          ...(requestedRecurring
-            ? { recurring: { interval: "month" } }
-            : {}),
+          ...(requestedRecurring ? { recurring: { interval: "month" } } : {}),
         },
         quantity: 1,
       },

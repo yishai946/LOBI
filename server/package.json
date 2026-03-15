@@ -7,7 +7,11 @@
     "dev": "nodemon server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "jest"
+    "test": "jest",
+    "db:generate": "prisma generate",
+    "db:test:status": "prisma migrate status --config prisma.config.test.ts",
+    "db:test:migrate": "prisma migrate dev --config prisma.config.test.ts",
+    "db:test:reset": "prisma migrate reset --force --config prisma.config.test.ts"
   },
   "keywords": [],
   "author": "",

@@ -10,13 +10,20 @@ export const requestOtp = async (req: Request, res: Response) => {
   res.json(result);
 };
 
+export const resendOtp = async (req: Request, res: Response) => {
+  const { phone } = req.body;
+
+  const result = await authService.resendOtp(phone);
+  res.json(result);
+};
+
 export const verifyOtp = async (req: Request, res: Response) => {
   const { phone, otp } = req.body;
 
   const user = await authService.verifyOtp(phone, otp);
   const accessToken = await authService.generateAccessToken(user.id);
   const refreshToken = authService.generateRefreshToken(user.id);
-  
+
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -54,7 +61,6 @@ export const refreshToken = async (req: Request, res: Response) => {
   }
 };
 
-
 export const completeProfile = async (req: Request, res: Response) => {
   const { name } = req.body;
 
@@ -79,7 +85,7 @@ export const completeProfile = async (req: Request, res: Response) => {
 
 export const selectContext = async (req: Request, res: Response) => {
   const { type, buildingId, apartmentId } = req.body;
-  
+
   const result = await authService.selectContext(
     req.user.userId,
     type,
@@ -89,4 +95,3 @@ export const selectContext = async (req: Request, res: Response) => {
 
   res.json(result);
 };
-
