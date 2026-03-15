@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/src/app.js",
     "test": "jest",
     "db:generate": "prisma generate",
     "db:test:status": "prisma migrate status --config prisma.config.test.ts",
