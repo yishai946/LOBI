@@ -27,7 +27,9 @@ const swaggerSpec = YAML.load(
   fs.readFileSync(swaggerPath, "utf8"),
 ) as swaggerUi.JsonObject;
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN,
+}));
 app.use(
   "/api/payments/webhook",
   express.raw({ type: "application/json" }),

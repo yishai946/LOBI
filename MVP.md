@@ -1,56 +1,70 @@
 # LOBI – MVP
 
-### Core Objective
+## Core Objective
 
-Provide a **simple digital system for managing residential buildings**, where **managers can handle payments and residents can track their obligations**, all through a **phone-number-based login without passwords**.
+Provide a **simple digital system for managing residential buildings**, enabling:
+
+* **Managers** to operate building administration (payments, residents, announcements, issues)
+* **Residents** to track obligations and communicate building problems
+
+All authentication is done using **phone number + OTP**, with **no passwords required**.
+
+The system focuses on **streamlining common building-management tasks** in a lightweight mobile-friendly interface.
 
 ---
 
 # User Types
 
-### 1️⃣ Admin
+## 1️⃣ Admin
 
-System-level operator.
+System-level operator responsible for **platform setup and oversight**.
 
 Capabilities:
 
-- Create buildings
-- Create managers
-- Access all buildings
-- Manage system data
+* Create buildings
+* Assign managers to buildings
+* View and manage all system data
+* Access all buildings regardless of ownership
 
-Admin is mainly for **initial setup and support**.
+Admin is mainly used for **initial configuration and system administration**.
 
 ---
 
-### 2️⃣ Building Manager
+## 2️⃣ Building Manager
 
-Responsible for managing **one building**.
+Responsible for **managing one building**.
+
+This is the **primary operational role** in the system.
 
 Capabilities:
 
-- Manage apartments in the building
-- Add residents to apartments
-- Create and manage payments (maintenance, fees, etc.)
-- Track which residents paid
-- View building payment status
+* Manage apartments within the building
+* Assign residents to apartments
+* Create and manage building payments
+* Track payment completion by residents
+* View payment status across the building
+* Send announcements/messages to residents
+* View and manage issues reported by residents
 
-Manager is the **main operational user**.
+Managers operate the **day-to-day administration of the building**.
 
 ---
 
-### 3️⃣ Resident
+## 3️⃣ Resident
 
-A tenant or apartment owner.
+A tenant or apartment owner living in the building.
 
 Capabilities:
 
-- View their apartment
-- View required payments
-- See payment history
-- Possibly mark payment as paid / upload proof (depending on scope)
+* View their apartment details
+* View building announcements
+* See required payments
+* View payment history
+* Pay assigned payments via checkout
+* Report building issues
+* Track status of reported issues
 
-Resident is the **consumer side of the system**.
+Residents primarily interact with the system to **stay informed and fulfill obligations**.
 
 ---
 
@@ -58,82 +72,186 @@ Resident is the **consumer side of the system**.
 
 ## 1️⃣ Authentication
 
-- Login via **phone + OTP**
-- User selects **context (Manager / Resident / Admin)** if multiple roles exist
-- JWT session created
+Authentication uses **phone-number-based login**.
+
+Flow:
+
+1. User enters phone number
+2. System sends OTP
+3. User verifies OTP
+4. If user has multiple roles, they select a **session context**
+5. A **JWT session** is created
+
+Supported session types:
+
+* Admin
+* Manager
+* Resident
+
+Each session includes the necessary **context data** (building / apartment).
 
 ---
 
-## 2️⃣ Building Management (Admin)
+# 2️⃣ Building Management (Admin)
 
 Admin can:
 
-- Create buildings
-- Assign managers
+* Create buildings
+* Assign managers to buildings
+* View building information
+* Manage system-level data
+
+Buildings represent the **primary container for all data**.
 
 ---
 
-## 3️⃣ Apartment Management (Manager)
+# 3️⃣ Apartment Management (Manager)
 
-Manager can:
+Managers can manage apartments inside their building.
 
-- Create apartments in the building
-- View apartments
-- Assign residents to apartments
+Capabilities:
 
----
+* Create apartments
+* View apartments
+* Update apartment information
+* Assign residents to apartments
 
-## 4️⃣ Resident Management (Manager)
-
-Manager can:
-
-- Add residents by phone
-- Connect them to apartments
-- View residents in building
+Each apartment belongs to **one building**.
 
 ---
 
-## 5️⃣ Payments (Manager)
+# 4️⃣ Resident Management (Manager)
 
-Manager can:
+Managers can manage residents in their building.
 
-- Create building payments
-- Assign them to apartments
-- Track payment status
+Capabilities:
+
+* Add residents using phone number
+* Assign residents to apartments
+* View residents in the building
+* Update or remove residents
+
+Residents are linked to **both a user account and an apartment**.
+
+---
+
+# 5️⃣ Payments (Manager)
+
+Managers can create **building payments** such as:
+
+* Maintenance fees
+* Repairs
+* Shared services
 
 Example:
 
-```
-Payment: March MaintenanceAmount: 120₪Apartments: all
-```
+Payment: March Maintenance
+Amount: 120₪
+Scope: All apartments in the building
+
+When a payment is created:
+
+* **Payment assignments are automatically generated** for every apartment in the building.
+
+Managers can:
+
+* View payment status per apartment
+* Track who has paid
+* Update or remove payments
 
 ---
 
-## 6️⃣ Payment Visibility (Resident)
+# 6️⃣ Payment Visibility & Checkout (Resident)
 
 Residents can:
 
-- See payments they owe
-- See past payments
-- See payment status
+* See payments assigned to their apartment
+* View payment history
+* Track payment status
+* Pay using an integrated **checkout flow**
+
+Payment status updates automatically when the **payment provider confirms completion**.
 
 ---
 
-# Typical MVP Flow
+# 7️⃣ Resident Issue Reporting
 
-### Manager Setup
+Residents can report **building-related issues**.
+
+Example issues:
+
+* Water leak
+* Elevator malfunction
+* Electricity problem
+
+Capabilities:
+
+Resident:
+
+* Create issue reports
+* Add description and optional images
+* Track issue status
+
+Manager:
+
+* View issues reported in the building
+* Update issue status
+* Manage building maintenance workflow
+
+---
+
+# 8️⃣ Building Announcements (Messages)
+
+Managers can send **announcements to all residents in the building**.
+
+Examples:
+
+* Maintenance notices
+* Water shutoff alerts
+* Community updates
+
+Residents can:
+
+* View messages for their building
+* Access message history
+
+Admins can view all system messages.
+
+---
+
+# Typical MVP Flows
+
+## Manager Setup Flow
 
 1. Admin creates building
-2. Admin creates manager
+2. Admin assigns manager
 3. Manager logs in
 4. Manager creates apartments
-5. Manager adds residents
+5. Manager assigns residents to apartments
 
 ---
 
-### Monthly Operation
+## Monthly Payment Flow
 
 1. Manager creates payment
-2. Residents see payment
-3. Residents pay
-4. Manager tracks payments
+2. System generates assignments for all apartments
+3. Residents see the payment
+4. Residents pay through checkout
+5. Manager monitors payment completion
+
+---
+
+## Issue Reporting Flow
+
+1. Resident reports issue
+2. Manager receives issue in dashboard
+3. Manager updates issue status
+4. Resident tracks progress
+
+---
+
+## Announcement Flow
+
+1. Manager creates message
+2. Message becomes visible to all residents in the building
+3. Residents read building announcements
