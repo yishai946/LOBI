@@ -3,28 +3,22 @@ import { z } from "zod";
 export const requestOtpSchema = z.object({
   phone: z
     .string()
-    .regex(
-      /^05\d{8}$/,
-      "Phone number must start with 05 and be 10 digits long",
-    ),
+    .regex(/^05\d{8}$/, "מספר הטלפון חייב להתחיל ב-05 ולהכיל 10 ספרות"),
 });
 
 export const verifyOtpSchema = z.object({
   phone: z
     .string()
-    .regex(
-      /^05\d{8}$/,
-      "Phone number must start with 05 and be 10 digits long",
-    ),
-  otp: z.string().length(6, "OTP must be 6 digits long"),
+    .regex(/^05\d{8}$/, "מספר הטלפון חייב להתחיל ב-05 ולהכיל 10 ספרות"),
+  otp: z.string().length(6, "קוד OTP חייב להיות באורך 6 ספרות"),
 });
 
 export const completeProfileSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, "שם נדרש"),
 });
 
 export const selectContextSchema = z.object({
-  type: z.enum(['ADMIN', 'RESIDENT', 'MANAGER']),
+  type: z.enum(["ADMIN", "RESIDENT", "MANAGER"]),
   buildingId: z.uuid().optional(),
   apartmentId: z.uuid().optional(),
 });

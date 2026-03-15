@@ -13,11 +13,11 @@ const MAX_IMAGES = 3;
 
 const ensureResidentContext = (currentUser: SessionPayload) => {
   if (currentUser.sessionType !== SessionType.RESIDENT) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   if (!currentUser.buildingId || !currentUser.apartmentId) {
-    throw new HttpError("Building and apartment context required", 400);
+    throw new HttpError("נדרש הקשר בניין ודירה", 400);
   }
 
   return {
@@ -41,7 +41,7 @@ export const createUploadUrls = async (
   const { buildingId, apartmentId } = ensureResidentContext(currentUser);
 
   if (data.files.length > MAX_IMAGES) {
-    throw new HttpError("Maximum 3 files", 400);
+    throw new HttpError("מקסימום 3 קבצים", 400);
   }
 
   try {
@@ -53,7 +53,7 @@ export const createUploadUrls = async (
 
     return { uploads };
   } catch (error) {
-    throw new HttpError("Failed to generate upload URLs", 400);
+    throw new HttpError("שגיאה ביצירת כתובות העלאה", 400);
   }
 };
 
@@ -70,11 +70,11 @@ export const createIssue = async (
     apartmentId = context.apartmentId;
   } else if (currentUser.sessionType === SessionType.MANAGER) {
     if (!currentUser.buildingId) {
-      throw new HttpError("Building context required", 400);
+      throw new HttpError("נדרש הקשר בניין", 400);
     }
 
     if (!data.apartmentId) {
-      throw new HttpError("Apartment ID required", 400);
+      throw new HttpError("נדרש מזהה דירה", 400);
     }
 
     const apartment = await prisma.apartment.findUnique({
@@ -82,17 +82,17 @@ export const createIssue = async (
       select: { buildingId: true },
     });
 
-    if (!apartment) throw new HttpError("Apartment not found", 404);
+    if (!apartment) throw new HttpError("הדירה לא נמצאה", 404);
 
     if (apartment.buildingId !== currentUser.buildingId) {
-      throw new HttpError("Forbidden", 403);
+      throw new HttpError("אסור", 403);
     }
 
     buildingId = apartment.buildingId;
     apartmentId = data.apartmentId;
   } else if (currentUser.sessionType === SessionType.ADMIN) {
     if (!data.apartmentId) {
-      throw new HttpError("Apartment ID required", 400);
+      throw new HttpError("נדרש מזהה דירה", 400);
     }
 
     const apartment = await prisma.apartment.findUnique({
@@ -100,29 +100,29 @@ export const createIssue = async (
       select: { buildingId: true },
     });
 
-    if (!apartment) throw new HttpError("Apartment not found", 404);
+    if (!apartment) throw new HttpError("הדירה לא נמצאה", 404);
 
     buildingId = apartment.buildingId;
     apartmentId = data.apartmentId;
   } else {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   const imageKeys = data.imageKeys ?? [];
 
   if (imageKeys.length > MAX_IMAGES) {
-    throw new HttpError("Maximum 3 images", 400);
+    throw new HttpError("מקסימום 3 תמונות", 400);
   }
 
   for (const key of imageKeys) {
     if (!key.startsWith("issues/")) {
-      throw new HttpError("Invalid image key", 400);
+      throw new HttpError("מפתח תמונה לא תקין", 400);
     }
     if (!buildingId || !apartmentId) {
-      throw new HttpError("Building and apartment context required", 400);
+      throw new HttpError("נדרש הקשר בניין ודירה", 400);
     }
     if (!isValidKey(key, buildingId, apartmentId)) {
-      throw new HttpError("Image key does not match building/apartment", 400);
+      throw new HttpError("מפתח התמונה אינו תואם לבניין/דירה", 400);
     }
   }
 
@@ -157,7 +157,7 @@ export const getIssues = async (currentUser: SessionPayload) => {
   }
 
   if (!currentUser.buildingId) {
-    throw new HttpError("Building context required", 400);
+    throw new HttpError("נדרש הקשר בניין", 400);
   }
 
   return prisma.issue.findMany({
@@ -176,12 +176,12 @@ export const getIssueById = async (
     include: { images: true },
   });
 
-  if (!issue) throw new HttpError("Issue not found", 404);
+  if (!issue) throw new HttpError("הבעיה לא נמצאה", 404);
 
   if (currentUser.sessionType === SessionType.ADMIN) return issue;
 
   if (issue.buildingId !== currentUser.buildingId) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   return issue;
@@ -193,14 +193,14 @@ export const updateIssue = async (
   data: UpdateIssueCommand,
 ) => {
   if (!data.title && !data.description) {
-    throw new HttpError("No updates provided", 400);
+    throw new HttpError("לא סופקו עדכונים", 400);
   }
 
   const issue = await prisma.issue.findUnique({
     where: { id: issueId },
   });
 
-  if (!issue) throw new HttpError("Issue not found", 404);
+  if (!issue) throw new HttpError("הבעיה לא נמצאה", 404);
 
   if (currentUser.sessionType === SessionType.ADMIN) {
     return prisma.issue.update({
@@ -210,14 +210,14 @@ export const updateIssue = async (
   }
 
   if (issue.buildingId !== currentUser.buildingId) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   if (
     currentUser.sessionType === SessionType.RESIDENT &&
     issue.createdById !== currentUser.userId
   ) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   return prisma.issue.update({
@@ -234,21 +234,21 @@ export const deleteIssue = async (
     where: { id: issueId },
   });
 
-  if (!issue) throw new HttpError("Issue not found", 404);
+  if (!issue) throw new HttpError("הבעיה לא נמצאה", 404);
 
   if (currentUser.sessionType === SessionType.ADMIN) {
     return prisma.issue.delete({ where: { id: issueId } });
   }
 
   if (issue.buildingId !== currentUser.buildingId) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   if (
     currentUser.sessionType === SessionType.RESIDENT &&
     issue.createdById !== currentUser.userId
   ) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   return prisma.issue.delete({ where: { id: issueId } });

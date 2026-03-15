@@ -1,10 +1,10 @@
 import z from "zod";
 
 export const createPaymentSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().min(1, "כותרת נדרשת"),
   description: z.string().optional(),
-  amount: z.number().positive("Amount must be greater than 0"),
-  buildingId: z.uuid("Invalid building ID"),
+  amount: z.number().positive("הסכום חייב להיות גדול מ-0"),
+  buildingId: z.uuid("מזהה בניין לא תקין"),
   isRecurring: z.boolean(),
 });
 
@@ -13,9 +13,9 @@ export const checkoutPaymentSchema = z.object({
 });
 
 export const updatePaymentSchema = z.object({
-  title: z.string().min(1, "Title is required").optional(),
+  title: z.string().min(1, "כותרת נדרשת").optional(),
   description: z.string().optional(),
-  amount: z.number().positive("Amount must be greater than 0").optional(),
+  amount: z.number().positive("הסכום חייב להיות גדול מ-0").optional(),
   isRecurring: z.boolean().optional(),
 });
 

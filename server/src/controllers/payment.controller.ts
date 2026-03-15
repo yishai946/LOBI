@@ -83,7 +83,7 @@ export const paymentWebhook = async (req: Request, res: Response) => {
   const signature = req.headers["stripe-signature"];
 
   if (!signature || Array.isArray(signature)) {
-    throw new HttpError("Missing Stripe signature", 400);
+    throw new HttpError("חתימת Stripe חסרה", 400);
   }
 
   const event = paymentService.constructStripeEvent(req.body, signature);

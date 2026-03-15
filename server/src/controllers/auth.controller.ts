@@ -37,7 +37,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
 export const refreshToken = async (req: Request, res: Response) => {
   const token = req.cookies.refreshToken;
   if (!token) {
-    throw new HttpError("Refresh token missing", 401);
+    throw new HttpError("טוקן רענון חסר", 401);
   }
 
   try {
@@ -57,7 +57,7 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     res.json({ accessToken });
   } catch (err) {
-    throw new HttpError("Invalid refresh token", 401);
+    throw new HttpError("טוקן רענון לא תקין", 401);
   }
 };
 
@@ -65,11 +65,11 @@ export const completeProfile = async (req: Request, res: Response) => {
   const { name } = req.body;
 
   if (!req.user) {
-    throw new HttpError("Unauthorized", 401);
+    throw new HttpError("לא מורשה", 401);
   }
 
   if (!name) {
-    throw new HttpError("Name required", 400);
+    throw new HttpError("נדרש שם", 400);
   }
 
   const updatedUser = await authService.completeProfile(req.user.userId, name);

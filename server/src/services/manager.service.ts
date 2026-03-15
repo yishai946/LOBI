@@ -7,7 +7,7 @@ export const createManager = async (data: CreateManagerCommand) => {
     where: { id: data.buildingId },
   });
 
-  if (!building) throw new HttpError("Building not found", 404);
+  if (!building) throw new HttpError("הבניין לא נמצא", 404);
 
   return prisma.manager.create({
     data: {
@@ -29,7 +29,7 @@ export const getManagerById = async (managerId: string) => {
     include: { user: true, building: true },
   });
 
-  if (!manager) throw new HttpError("Manager not found", 404);
+  if (!manager) throw new HttpError("המנהל לא נמצא", 404);
 
   return manager;
 };

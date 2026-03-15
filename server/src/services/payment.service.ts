@@ -21,7 +21,7 @@ const getStripeClient = () => {
   const apiKey = process.env.STRIPE_SECRET_KEY;
   if (!apiKey) {
     throw new HttpError(
-      "STRIPE_SECRET_KEY is not configured. Add it to your environment.",
+      "STRIPE_SECRET_KEY לא מוגדר. הוסף אותו לסביבת העבודה שלך.",
       500,
     );
   }
@@ -39,7 +39,7 @@ const ensureBuildingAccess = async (
   if (currentUser.sessionType === SessionType.ADMIN) return;
 
   if (currentUser.buildingId !== buildingId) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 };
 
@@ -55,13 +55,13 @@ export const createPayment = async (
   });
 
   if (!building) {
-    throw new HttpError("Building not found", 404);
+    throw new HttpError("הבניין לא נמצא", 404);
   }
 
   const unitAmount = Math.round(Number(data.amount) * 100);
 
   if (unitAmount < 1) {
-    throw new HttpError("Amount must be greater than 0", 400);
+    throw new HttpError("הסכום חייב להיות גדול מ-0", 400);
   }
 
   const payment = await prisma.$transaction(async (tx) => {
@@ -112,13 +112,13 @@ const resolveBuildingId = (
 ) => {
   if (currentUser.sessionType === SessionType.ADMIN) {
     if (!buildingId) {
-      throw new HttpError("Building ID required", 400);
+      throw new HttpError("נדרש מזהה בניין", 400);
     }
     return buildingId;
   }
 
   if (!currentUser.buildingId) {
-    throw new HttpError("Building context required", 400);
+    throw new HttpError("נדרש הקשר בניין", 400);
   }
 
   return currentUser.buildingId;
@@ -193,14 +193,14 @@ export const getPaymentById = async (
   });
 
   if (!payment) {
-    throw new HttpError("Payment not found", 404);
+    throw new HttpError("התשלום לא נמצא", 404);
   }
 
   if (
     currentUser.sessionType !== SessionType.ADMIN &&
     currentUser.buildingId !== payment.buildingId
   ) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   return payment;
@@ -216,18 +216,18 @@ export const updatePayment = async (
   });
 
   if (!payment) {
-    throw new HttpError("Payment not found", 404);
+    throw new HttpError("התשלום לא נמצא", 404);
   }
 
   if (
     currentUser.sessionType !== SessionType.ADMIN &&
     currentUser.buildingId !== payment.buildingId
   ) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   if (data.amount && data.amount <= 0) {
-    throw new HttpError("Amount must be greater than 0", 400);
+    throw new HttpError("הסכום חייב להיות גדול מ-0", 400);
   }
 
   return prisma.payment.update({
@@ -250,14 +250,14 @@ export const deletePayment = async (
   });
 
   if (!payment) {
-    throw new HttpError("Payment not found", 404);
+    throw new HttpError("התשלום לא נמצא", 404);
   }
 
   if (
     currentUser.sessionType !== SessionType.ADMIN &&
     currentUser.buildingId !== payment.buildingId
   ) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   return prisma.payment.delete({ where: { id: paymentId } });
@@ -272,14 +272,14 @@ export const getAssignmentsForPayment = async (
   });
 
   if (!payment) {
-    throw new HttpError("Payment not found", 404);
+    throw new HttpError("התשלום לא נמצא", 404);
   }
 
   if (
     currentUser.sessionType !== SessionType.ADMIN &&
     currentUser.buildingId !== payment.buildingId
   ) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   return prisma.paymentAssignment.findMany({
@@ -290,7 +290,7 @@ export const getAssignmentsForPayment = async (
 
 export const getMyPayments = async (currentUser: SessionPayload) => {
   if (!currentUser.apartmentId) {
-    throw new HttpError("Apartment context required", 400);
+    throw new HttpError("נדרש הקשר דירה", 400);
   }
 
   return prisma.paymentAssignment.findMany({
@@ -312,29 +312,29 @@ export const createCheckoutSession = async (
   });
 
   if (!assignment) {
-    throw new HttpError("Payment assignment not found", 404);
+    throw new HttpError("שיוך התשלום לא נמצא", 404);
   }
 
   if (assignment.status === PaymentStatus.PAID) {
-    throw new HttpError("Payment already completed", 400);
+    throw new HttpError("התשלום כבר הושלם", 400);
   }
 
   if (
     currentUser.sessionType === SessionType.RESIDENT &&
     currentUser.apartmentId !== assignment.apartmentId
   ) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   const requestedRecurring = data.isRecurring ?? assignment.payment.isRecurring;
 
   if (requestedRecurring && !assignment.payment.isRecurring) {
-    throw new HttpError("Recurring payments not allowed", 400);
+    throw new HttpError("תשלומים חוזרים אינם מותרים", 400);
   }
 
   const unitAmount = Math.round(assignment.payment.amount.toNumber() * 100);
   if (unitAmount < 1) {
-    throw new HttpError("Amount must be greater than 0", 400);
+    throw new HttpError("הסכום חייב להיות גדול מ-0", 400);
   }
 
   const baseUrl = origin || "http://localhost:3000";
@@ -364,7 +364,7 @@ export const createCheckoutSession = async (
   });
 
   if (!session.url) {
-    throw new HttpError("Stripe session URL not available", 500);
+    throw new HttpError("כתובת URL של Stripe לא זמינה", 500);
   }
 
   await prisma.paymentAssignment.update({

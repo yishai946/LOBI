@@ -14,7 +14,7 @@ const ensureBuildingAccess = async (
   if (currentUser.sessionType === SessionType.ADMIN) return;
 
   if (currentUser.buildingId !== buildingId) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 };
 
@@ -27,7 +27,7 @@ export const createResident = async (
     select: { buildingId: true },
   });
 
-  if (!apartment) throw new HttpError("Apartment not found", 404);
+  if (!apartment) throw new HttpError("הדירה לא נמצאה", 404);
 
   await ensureBuildingAccess(currentUser, apartment.buildingId);
 
@@ -47,7 +47,7 @@ export const getResidents = async (currentUser: SessionPayload) => {
   }
 
   if (!currentUser.buildingId) {
-    throw new HttpError("Building context required", 400);
+    throw new HttpError("נדרש הקשר בניין", 400);
   }
 
   return prisma.resident.findMany({
@@ -65,7 +65,7 @@ export const getResidentById = async (
     include: { user: true, apartment: true },
   });
 
-  if (!resident) throw new HttpError("Resident not found", 404);
+  if (!resident) throw new HttpError("הדייר לא נמצא", 404);
 
   await ensureBuildingAccess(currentUser, resident.apartment.buildingId);
 
@@ -82,12 +82,12 @@ export const updateResident = async (
     include: { apartment: true },
   });
 
-  if (!resident) throw new HttpError("Resident not found", 404);
+  if (!resident) throw new HttpError("הדייר לא נמצא", 404);
 
   await ensureBuildingAccess(currentUser, resident.apartment.buildingId);
 
   if (!data.apartmentId) {
-    throw new HttpError("No updates provided", 400);
+    throw new HttpError("לא סופקו עדכונים", 400);
   }
 
   const newApartment = await prisma.apartment.findUnique({
@@ -95,7 +95,7 @@ export const updateResident = async (
     select: { buildingId: true },
   });
 
-  if (!newApartment) throw new HttpError("Apartment not found", 404);
+  if (!newApartment) throw new HttpError("הדירה לא נמצאה", 404);
 
   await ensureBuildingAccess(currentUser, newApartment.buildingId);
 
@@ -114,7 +114,7 @@ export const deleteResident = async (
     include: { apartment: true },
   });
 
-  if (!resident) throw new HttpError("Resident not found", 404);
+  if (!resident) throw new HttpError("הדייר לא נמצא", 404);
 
   await ensureBuildingAccess(currentUser, resident.apartment.buildingId);
 

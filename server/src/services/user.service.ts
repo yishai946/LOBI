@@ -22,13 +22,13 @@ export const createResident = async (
     select: { buildingId: true },
   });
 
-  if (!apartment) throw new HttpError("Apartment not found", 404);
+  if (!apartment) throw new HttpError("הדירה לא נמצאה", 404);
 
   if (
     currentUser.sessionType === SessionType.MANAGER &&
     currentUser.buildingId !== apartment.buildingId
   ) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   const user = await getOrCreateUser(phone);
@@ -45,7 +45,7 @@ export const createManager = async ({
   });
 
   if (!building) {
-    throw new HttpError("Building not found", 404);
+    throw new HttpError("הבניין לא נמצא", 404);
   }
 
   const user = await getOrCreateUser(phone);
@@ -64,7 +64,7 @@ export const updateMe = async (
   data: UpdateMeCommand,
 ) => {
   if (!data.name) {
-    throw new HttpError("No updates provided", 400);
+    throw new HttpError("לא סופקו עדכונים", 400);
   }
 
   return prisma.user.update({

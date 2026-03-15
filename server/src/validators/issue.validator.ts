@@ -4,22 +4,22 @@ export const uploadUrlsSchema = z.object({
   files: z
     .array(
       z.object({
-        filename: z.string().min(1, "Filename is required"),
-        contentType: z.string().min(1, "Content type is required"),
+        filename: z.string().min(1, "שם קובץ נדרש"),
+        contentType: z.string().min(1, "סוג תוכן נדרש"),
       }),
     )
-    .max(3, "Maximum 3 files"),
+    .max(3, "מקסימום 3 קבצים"),
 });
 
 export const createIssueSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().min(1, "כותרת נדרשת"),
   description: z.string().optional(),
-  apartmentId: z.uuid("Invalid apartment ID").optional(),
-  imageKeys: z.array(z.string()).max(3, "Maximum 3 images").optional(),
+  apartmentId: z.uuid("מזהה דירה לא תקין").optional(),
+  imageKeys: z.array(z.string()).max(3, "מקסימום 3 תמונות").optional(),
 });
 
 export const updateIssueSchema = z.object({
-  title: z.string().min(1, "Title is required").optional(),
+  title: z.string().min(1, "כותרת נדרשת").optional(),
   description: z.string().optional(),
 });
 

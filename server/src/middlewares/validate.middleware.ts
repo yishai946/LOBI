@@ -19,6 +19,6 @@ export const validate =
         throw new HttpError(errorMessage, 400);
       }
 
-      throw new HttpError("Internal Server Error", 500);
+      throw new HttpError("שגיאת שרת פנימית", 500);
     }
   };

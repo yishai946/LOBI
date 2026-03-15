@@ -1,8 +1,8 @@
 import z from "zod";
 
 export const createMessageSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  content: z.string().min(1, "Content is required"),
+  title: z.string().min(1, "כותרת נדרשת"),
+  content: z.string().min(1, "תוכן נדרש"),
   isUrgent: z.boolean().optional(),
 });
 

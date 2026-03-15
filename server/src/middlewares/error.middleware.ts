@@ -12,7 +12,7 @@ export const errorHandler = (
   _next: NextFunction,
 ) => {
   let statusCode = 500;
-  let message = "Something went wrong. Please try again later.";
+  let message = "משהו השתבש. אנא נסה שנית מאוחר יותר.";
 
   if (err instanceof HttpError) {
     statusCode = err.statusCode;
@@ -24,7 +24,7 @@ export const errorHandler = (
     err.code === "P2002"
   ) {
     statusCode = 400;
-    message = "Resource already exists";
+    message = "המשאב כבר קיים";
   }
 
   if (
@@ -32,7 +32,7 @@ export const errorHandler = (
     err.code === "P2025"
   ) {
     statusCode = 404;
-    message = "Resource not found";
+    message = "המשאב לא נמצא";
   }
 
   logger.error({

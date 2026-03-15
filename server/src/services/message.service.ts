@@ -9,11 +9,11 @@ export const createMessage = async (
   data: CreateMessageCommand,
 ) => {
   if (currentUser.sessionType !== SessionType.MANAGER) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   if (!currentUser.buildingId) {
-    throw new HttpError("Building context required", 400);
+    throw new HttpError("נדרש הקשר בניין", 400);
   }
 
   return prisma.message.create({
@@ -34,7 +34,7 @@ export const getMessages = async (currentUser: SessionPayload) => {
   }
 
   if (!currentUser.buildingId) {
-    throw new HttpError("Building context required", 400);
+    throw new HttpError("נדרש הקשר בניין", 400);
   }
 
   return prisma.message.findMany({
@@ -51,12 +51,12 @@ export const getMessageById = async (
     where: { id: messageId },
   });
 
-  if (!message) throw new HttpError("Message not found", 404);
+  if (!message) throw new HttpError("ההודעה לא נמצאה", 404);
 
   if (currentUser.sessionType === SessionType.ADMIN) return message;
 
   if (message.buildingId !== currentUser.buildingId) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 
   return message;

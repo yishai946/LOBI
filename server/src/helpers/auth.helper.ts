@@ -9,7 +9,9 @@ const issueSessionToken = (payload: {
   buildingId?: string;
   apartmentId?: string;
 }) => {
-  const token = jwt.sign(payload, process.env.ACCESS_SECRET!, { expiresIn: "7d" });
+  const token = jwt.sign(payload, process.env.ACCESS_SECRET!, {
+    expiresIn: "7d",
+  });
 
   return { token };
 };
@@ -19,7 +21,7 @@ const initializeManagerSession = async (
   buildingId?: string,
 ) => {
   if (!buildingId) {
-    throw new HttpError("Building ID required for manager session", 400);
+    throw new HttpError("נדרש מזהה בניין לסשן מנהל", 400);
   }
 
   const relation = await prisma.manager.findUnique({
@@ -32,7 +34,7 @@ const initializeManagerSession = async (
   });
 
   if (!relation) {
-    throw new HttpError("Not manager of this building", 403);
+    throw new HttpError("אינך מנהל של בניין זה", 403);
   }
 
   return issueSessionToken({
@@ -47,9 +49,9 @@ const initializeResidentSession = async (
   apartmentId?: string,
 ) => {
   if (!apartmentId) {
-    throw new HttpError("Apartment ID required for resident session", 400);
+    throw new HttpError("נדרש מזהה דירה לסשן דייר", 400);
   }
-  
+
   const relation = await prisma.resident.findUnique({
     where: {
       userId_apartmentId: {
@@ -60,7 +62,7 @@ const initializeResidentSession = async (
   });
 
   if (!relation) {
-    throw new HttpError("Not resident of this apartment", 403);
+    throw new HttpError("אינך דייר של דירה זו", 403);
   }
 
   const apartment = await prisma.apartment.findUnique({
@@ -81,7 +83,7 @@ const initializeAdminSession = async (userId: string) => {
   });
 
   if (user?.role !== "ADMIN") {
-    throw new HttpError("Not an admin", 403);
+    throw new HttpError("אינך מנהל מערכת", 403);
   }
 
   return issueSessionToken({

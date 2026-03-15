@@ -17,7 +17,7 @@ const ensureAccess = async (
   if (currentUser.sessionType === SessionType.ADMIN) return;
 
   if (currentUser.buildingId !== buildingId) {
-    throw new HttpError("Forbidden", 403);
+    throw new HttpError("אסור", 403);
   }
 };
 
@@ -27,7 +27,7 @@ export const getAll = async (currentUser: SessionPayload) => {
   }
 
   if (!currentUser.buildingId) {
-    throw new HttpError("Building context required", 400);
+    throw new HttpError("נדרש הקשר בניין", 400);
   }
 
   return prisma.apartment.findMany({
@@ -44,7 +44,7 @@ export const getById = async (
   });
 
   if (!apartment) {
-    throw new HttpError("Apartment not found", 404);
+    throw new HttpError("הדירה לא נמצאה", 404);
   }
 
   await ensureAccess(currentUser, apartment.buildingId);
@@ -62,7 +62,7 @@ export const update = async (
   });
 
   if (!apartment) {
-    throw new HttpError("Apartment not found", 404);
+    throw new HttpError("הדירה לא נמצאה", 404);
   }
 
   await ensureAccess(currentUser, apartment.buildingId);
@@ -82,7 +82,7 @@ export const remove = async (
   });
 
   if (!apartment) {
-    throw new HttpError("Apartment not found", 404);
+    throw new HttpError("הדירה לא נמצאה", 404);
   }
 
   await ensureAccess(currentUser, apartment.buildingId);

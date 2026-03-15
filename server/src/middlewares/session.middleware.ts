@@ -11,7 +11,7 @@ export const requireManager = (
     req.user.sessionType !== SessionType.MANAGER &&
     req.user.sessionType !== SessionType.ADMIN
   ) {
-    return next(new HttpError("Forbidden: not a manager", 403));
+    return next(new HttpError("אסור: אינך מנהל", 403));
   }
   next();
 };
@@ -25,7 +25,7 @@ export const requireResident = (
     req.user.sessionType !== SessionType.RESIDENT &&
     req.user.sessionType !== SessionType.ADMIN
   ) {
-    return next(new HttpError("Forbidden: not a resident", 403));
+    return next(new HttpError("אסור: אינך דייר", 403));
   }
   next();
 };
@@ -40,14 +40,14 @@ export const requireManagerOrResident = (
     req.user.sessionType !== SessionType.RESIDENT &&
     req.user.sessionType !== SessionType.ADMIN
   ) {
-    return next(new HttpError("Forbidden", 403));
+    return next(new HttpError("אסור", 403));
   }
   next();
 };
 
 export const requireAdmin = (req: Request, _: Response, next: NextFunction) => {
   if (req.user.sessionType !== SessionType.ADMIN) {
-    return next(new HttpError("Forbidden: Admin only", 403));
+    return next(new HttpError("אסור: למנהלי מערכת בלבד", 403));
   }
   next();
 };

@@ -12,7 +12,7 @@ export const authMiddleware = (
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new HttpError("Unauthorized", 401);
+      throw new HttpError("לא מורשה", 401);
     }
 
     const token = authHeader.split(" ")[1];
@@ -26,6 +26,6 @@ export const authMiddleware = (
 
     next();
   } catch (err) {
-    next(new HttpError("Unauthorized", 401));
+    next(new HttpError("לא מורשה", 401));
   }
 };

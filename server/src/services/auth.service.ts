@@ -34,11 +34,11 @@ export const requestOtp = async (phone: string) => {
   });
 
   if (!user) {
-    throw new HttpError("User not registered in this building", 404);
+    throw new HttpError("המשתמש אינו רשום בבניין זה", 404);
   }
 
   if (!user.isActive) {
-    throw new HttpError("User is disabled", 403);
+    throw new HttpError("המשתמש מושבת", 403);
   }
 
   await issueOtpForUser(user.id, phone);
@@ -52,15 +52,15 @@ export const resendOtp = async (phone: string) => {
   });
 
   if (!user) {
-    throw new HttpError("User not registered in this building", 404);
+    throw new HttpError("המשתמש אינו רשום בבניין זה", 404);
   }
 
   if (!user.isActive) {
-    throw new HttpError("User is disabled", 403);
+    throw new HttpError("המשתמש מושבת", 403);
   }
 
   if (!user.otpCode || !user.otpExpires) {
-    throw new HttpError("Request OTP first", 400);
+    throw new HttpError("בקש קוד OTP תחילה", 400);
   }
 
   const lastOtpIssuedAt = new Date(
@@ -71,7 +71,7 @@ export const resendOtp = async (phone: string) => {
   );
 
   if (resendAvailableAt > new Date()) {
-    throw new HttpError("OTP can be resent only after 1 minute", 429);
+    throw new HttpError("ניתן לשלוח OTP מחדש רק לאחר דקה", 429);
   }
 
   await issueOtpForUser(user.id, phone);
@@ -99,15 +99,15 @@ export const verifyOtp = async (phone: string, otp: string) => {
   });
 
   if (!user || !user.otpCode || !user.otpExpires) {
-    throw new HttpError("Invalid request", 400);
+    throw new HttpError("בקשה לא תקינה", 400);
   }
 
   if (user.otpCode !== otp) {
-    throw new HttpError("Invalid OTP", 401);
+    throw new HttpError("קוד OTP לא תקין", 401);
   }
 
   if (user.otpExpires < new Date()) {
-    throw new HttpError("OTP expired", 401);
+    throw new HttpError("קוד OTP פג תוקף", 401);
   }
 
   const verifiedUser = await prisma.user.update({
@@ -155,7 +155,7 @@ export const generateAccessToken = async (userId: string) => {
   });
 
   if (!user) {
-    throw new HttpError("User not found", 404);
+    throw new HttpError("המשתמש לא נמצא", 404);
   }
 
   const contexts = [

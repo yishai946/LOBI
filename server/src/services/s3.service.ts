@@ -11,10 +11,14 @@ const client = new S3Client({
   },
 });
 
-const buildKey = (buildingId: string, apartmentId: string, filename: string) => {
+const buildKey = (
+  buildingId: string,
+  apartmentId: string,
+  filename: string,
+) => {
   const extension = path.extname(filename).replace(".", "");
   if (!extension) {
-    throw new Error("File extension is required");
+    throw new Error("נדרשת סיומת קובץ");
   }
 
   return `issues/${buildingId}/${apartmentId}/${randomUUID()}.${extension}`;
