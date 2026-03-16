@@ -1,6 +1,10 @@
 import React from 'react';
-import { useAuth } from '../../providers/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Box, Button, Divider, IconButton, Paper, Typography } from '@mui/material';
+import ApartmentIcon from '@mui/icons-material/Apartment';
+import LogoutIcon from '@mui/icons-material/Logout';
+import { useAuth } from '../../providers/AuthContext';
+import { Row, Column, Center } from '../../components/containers';
 
 export const HomePage: React.FC = () => {
   const { user, currentContext, logout } = useAuth();
@@ -8,45 +12,109 @@ export const HomePage: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
-      <header className="bg-white dark:bg-slate-900 sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="size-10 rounded-lg bg-primary flex items-center justify-center text-white">
-              <span className="material-symbols-outlined">apartment</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold leading-tight">{currentContext?.buildingName || 'LOBI'}</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{currentContext?.type}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={handleLogout} className="size-10 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              <span className="material-symbols-outlined">logout</span>
-            </button>
-          </div>
-        </div>
-      </header>
+    <Column
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        color: 'text.primary',
+      }}
+    >
+      <Box
+        component="header"
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          borderBottom: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Row sx={{ alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+          <Row sx={{ alignItems: 'center', gap: 1.5 }}>
+            <Center
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+              }}
+            >
+              <ApartmentIcon fontSize="small" />
+            </Center>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
+                {currentContext?.buildingName || 'LOBI'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {currentContext?.type}
+              </Typography>
+            </Box>
+          </Row>
 
-      <main className="flex-1 overflow-y-auto pb-24 p-4">
-        <div className="bg-primary rounded-xl p-6 text-white shadow-lg relative overflow-hidden mb-6">
-          <div className="relative z-10">
-            <h2 className="text-xl font-bold mb-2">שלום, {user?.name || 'משתמש'}</h2>
-            <p className="text-white/80 text-sm mb-6 italic">ברוך הבא למערכת LOBI</p>
-          </div>
-        </div>
-        
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
-          <h3 className="text-lg font-bold mb-4">פרטי משתמש</h3>
-          <p><strong>טלפון:</strong> {user?.phone}</p>
-          <p><strong>תפקיד:</strong> {user?.role}</p>
-          <p><strong>הקשר נוכחי:</strong> {currentContext?.type}</p>
-        </div>
-      </main>
-    </div>
+          <IconButton onClick={handleLogout} sx={{ bgcolor: 'action.hover' }} aria-label="logout">
+            <LogoutIcon fontSize="small" />
+          </IconButton>
+        </Row>
+      </Box>
+
+      <Box component="main" sx={{ flex: 1, overflowY: 'auto', px: 2, py: 2, pb: 8 }}>
+        <Paper
+          elevation={4}
+          sx={{
+            borderRadius: 3,
+            p: 3,
+            mb: 3,
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+          }}
+        >
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+            שלום, {user?.name || 'משתמש'}
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.85, fontStyle: 'italic' }}>
+            ברוך הבא למערכת LOBI
+          </Typography>
+        </Paper>
+
+        <Paper variant="outlined" sx={{ borderRadius: 3, p: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            פרטי משתמש
+          </Typography>
+
+          <Column sx={{ gap: 1 }}>
+            <Typography variant="body1">
+              <Box component="span" sx={{ fontWeight: 700 }}>
+                טלפון:
+              </Box>{' '}
+              {user?.phone}
+            </Typography>
+            <Typography variant="body1">
+              <Box component="span" sx={{ fontWeight: 700 }}>
+                תפקיד:
+              </Box>{' '}
+              {user?.role}
+            </Typography>
+            <Typography variant="body1">
+              <Box component="span" sx={{ fontWeight: 700 }}>
+                הקשר נוכחי:
+              </Box>{' '}
+              {currentContext?.type}
+            </Typography>
+          </Column>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Button variant="outlined" color="primary" onClick={handleLogout}>
+            התנתקות
+          </Button>
+        </Paper>
+      </Box>
+    </Column>
   );
 };

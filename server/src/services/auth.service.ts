@@ -159,6 +159,13 @@ export const generateAccessToken = async (userId: string) => {
   }
 
   const contexts = [
+    ...(user.role === "ADMIN"
+      ? [
+          {
+            type: "ADMIN",
+          },
+        ]
+      : []),
     ...user.apartments.map((a) => ({
       type: "RESIDENT",
       apartmentId: a.apartment.id,

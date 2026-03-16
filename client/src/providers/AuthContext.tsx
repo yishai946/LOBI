@@ -1,7 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AuthContextData } from '../entities/AuthContextData';
 import { User } from '../entities/User';
 import { userService } from '../api/userService';
+import { useGlobalMessage } from './MessageProvider';
+
+const authQueryKeys = {
+  me: ['auth', 'me'] as const,
+};
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -9,6 +15,7 @@ interface AuthContextType {
   contexts: AuthContextData[];
   currentContext: AuthContextData | null;
   login: (token: string, contexts: AuthContextData[], needsProfileCompletion: boolean) => void;
+  completeProfile: (user: User) => void;
   setContext: (context: AuthContextData, token: string) => void;
   logout: () => void;
   isLoading: boolean;
@@ -18,53 +25,83 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const queryClient = useQueryClient();
+  const { showError, showSuccess } = useGlobalMessage();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
-  const [contexts, setContexts] = useState<AuthContextData[]>([]);
-  const [currentContext, setCurrentContext] = useState<AuthContextData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [needsProfileCompletion, setNeedsProfileCompletion] = useState<boolean>(false);
+  const [contexts, setContexts] = useState<AuthContextData[]>(() => {
+    const savedContexts = localStorage.getItem('contexts');
+    return savedContexts ? JSON.parse(savedContexts) : [];
+  });
+  const [currentContext, setCurrentContext] = useState<AuthContextData | null>(() => {
+    const savedCurrentContext = localStorage.getItem('currentContext');
+    return savedCurrentContext ? JSON.parse(savedCurrentContext) : null;
+  });
+  const [needsProfileCompletion, setNeedsProfileCompletion] = useState<boolean>(() => {
+    return localStorage.getItem('needsProfileCompletion') === 'true';
+  });
+  const token = localStorage.getItem('accessToken');
+  const meQuery = useQuery({
+    queryKey: authQueryKeys.me,
+    queryFn: userService.getMe,
+    enabled: Boolean(token),
+    retry: false,
+  });
+  const isLoading = meQuery.isLoading;
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        try {
-          const userData = await userService.getMe();
-          setUser(userData);
-          setIsAuthenticated(true);
-          
-          // Load contexts from local storage if available
-          const savedContexts = localStorage.getItem('contexts');
-          if (savedContexts) {
-            setContexts(JSON.parse(savedContexts));
-          }
-          
-          const savedCurrentContext = localStorage.getItem('currentContext');
-          if (savedCurrentContext) {
-            setCurrentContext(JSON.parse(savedCurrentContext));
-          }
+    if (!token) {
+      setIsAuthenticated(false);
+      setUser(null);
+      return;
+    }
 
-        } catch (error) {
-          console.error('Failed to fetch user', error);
-          logout();
-        }
+    if (meQuery.isSuccess) {
+      setUser(meQuery.data);
+      setIsAuthenticated(true);
+      if (!isAuthenticated) {
+        showSuccess('ברוך הבא');
       }
-      setIsLoading(false);
-    };
+    }
+  }, [token, meQuery.isSuccess, meQuery.data, isAuthenticated, showSuccess]);
 
-    checkAuth();
-  }, []);
+  useEffect(() => {
+    if (token && meQuery.isError) {
+      showError('פג תוקף ההתחברות. אנא התחבר מחדש');
+      logout();
+    }
+  }, [token, meQuery.isError, showError]);
 
-  const login = (token: string, newContexts: AuthContextData[], profileCompletionNeeded: boolean) => {
+  const login = (
+    token: string,
+    newContexts: AuthContextData[],
+    profileCompletionNeeded: boolean
+  ) => {
     localStorage.setItem('accessToken', token);
     localStorage.setItem('contexts', JSON.stringify(newContexts));
+    localStorage.setItem('needsProfileCompletion', String(profileCompletionNeeded));
+    localStorage.removeItem('currentContext');
     setContexts(newContexts);
+    setCurrentContext(null);
     setNeedsProfileCompletion(profileCompletionNeeded);
     setIsAuthenticated(true);
-    
-    // Fetch user details
-    userService.getMe().then(setUser).catch(console.error);
+
+    queryClient
+      .fetchQuery({
+        queryKey: authQueryKeys.me,
+        queryFn: userService.getMe,
+      })
+      .then(setUser)
+      .catch(() => {
+        logout();
+      });
+  };
+
+  const completeProfile = (nextUser: User) => {
+    setUser(nextUser);
+    setNeedsProfileCompletion(false);
+    localStorage.removeItem('needsProfileCompletion');
+    queryClient.setQueryData(authQueryKeys.me, nextUser);
   };
 
   const setContext = (context: AuthContextData, token: string) => {
@@ -77,6 +114,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('accessToken');
     localStorage.removeItem('contexts');
     localStorage.removeItem('currentContext');
+    localStorage.removeItem('needsProfileCompletion');
+    queryClient.removeQueries({ queryKey: authQueryKeys.me });
     setIsAuthenticated(false);
     setUser(null);
     setContexts([]);
@@ -92,10 +131,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         contexts,
         currentContext,
         login,
+        completeProfile,
         setContext,
         logout,
         isLoading,
-        needsProfileCompletion
+        needsProfileCompletion,
       }}
     >
       {children}

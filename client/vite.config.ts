@@ -1,20 +1,25 @@
-import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, ".", "");
-  return {
-    plugins: [react(), tailwindcss()],
-    define: {
-      "process.env.GEMINI_API_KEY": JSON.stringify(env.GEMINI_API_KEY),
-      "process.env.API_URL": JSON.stringify(env.API_URL),
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    open: true,
+  },
+  resolve: {
+    alias: {
+      '@components': '/src/components',
+      '@pages': '/src/pages',
+      '@hooks': '/src/hooks',
+      '@providers': '/src/providers',
+      '@enums': '/src/enums',
+      '@entities': '/src/entities',
+      '@api': '/src/api',
+      '@skeletons': '/src/skeletons',
+      '@constants': '/src/constants',
+      '@utils': '/src/utils',
+      '@types': '/src/types',
     },
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "."),
-      },
-    },
-  };
+  },
 });
