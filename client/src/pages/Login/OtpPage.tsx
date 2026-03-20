@@ -5,7 +5,7 @@ import axios from 'axios';
 import { authService } from '../../api/authService';
 import { useAuth } from '../../providers/AuthContext';
 import { Button, Typography, Box } from '@mui/material';
-import { Column } from '../../components/containers';
+import { Center, Column } from '../../components/containers';
 import { useGlobalMessage } from '../../providers/MessageProvider';
 import { AuthPageHeader } from './components/AuthPageHeader';
 import { OtpCodeInputs } from './components/OtpCodeInputs';
@@ -116,29 +116,31 @@ export const OtpPage = () => {
   return (
     <Column
       sx={{
-        height: '100vh',
+        height: '100dvh',
         overflow: 'hidden',
         bgcolor: 'background.default',
       }}
     >
       <AuthPageHeader title="אימות חשבון" onBack={() => navigate('/login')} />
 
-      <Column
+      <Center
         sx={{
           flex: 1,
-          px: 3,
-          pt: 6,
-          pb: 4,
+          minHeight: 0,
+          px: { xs: 2, sm: 3 },
+          pt: { xs: 1.5, sm: 2.5 },
+          pb: { xs: 'calc(14px + env(safe-area-inset-bottom, 0px))', sm: 2.5 },
           maxWidth: 480,
           mx: 'auto',
           width: '100%',
+          gap: { xs: 4, sm: 2.25 },
         }}
       >
         <Column
           sx={{
             alignItems: 'center',
             textAlign: 'center',
-            mb: 5,
+            gap: { xs: 0.75, sm: 1.1 },
           }}
         >
           <Box
@@ -146,22 +148,40 @@ export const OtpPage = () => {
             src="/images/logo.png"
             alt="לוגו LOBI"
             sx={{
-              width: 100,
-              height: 100,
+              width: { xs: 64, sm: 82, md: 94 },
+              height: { xs: 64, sm: 82, md: 94 },
               objectFit: 'contain',
-              mb: 3,
+              mb: { xs: 1, sm: 2 },
               filter: 'drop-shadow(0 8px 16px rgba(0, 31, 61, 0.18))',
             }}
           />
-          <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1.5 }}>
+          <Typography
+            variant="h5"
+            component="h2"
+            sx={{
+              fontWeight: 'bold',
+              mb: { xs: 0.25, sm: 0.8 },
+              fontSize: { xs: '1.3rem', sm: '1.6rem' },
+              lineHeight: 1.2,
+            }}
+          >
             אימות קוד
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.92rem', sm: '1rem' }, lineHeight: 1.3 }}
+          >
             הזן את הקוד שנשלח לנייד שלך
           </Typography>
           <Typography
             variant="subtitle1"
-            sx={{ color: 'primary.main', fontWeight: 600, mt: 0.5 }}
+            sx={{
+              color: 'primary.main',
+              fontWeight: 600,
+              mt: { xs: 0.25, sm: 0.5 },
+              fontSize: { xs: '0.95rem', sm: '1rem' },
+            }}
             dir="ltr"
           >
             {phone}
@@ -177,13 +197,18 @@ export const OtpPage = () => {
         />
 
         {error && (
-          <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
+          <Typography
+            color="error"
+            variant="body2"
+            align="center"
+            sx={{ mb: { xs: 0.5, sm: 1 }, lineHeight: 1.25 }}
+          >
             {error}
           </Typography>
         )}
 
-        <Column sx={{ alignItems: 'center', textAlign: 'center', mb: 5 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        <Column sx={{ alignItems: 'center', textAlign: 'center', gap: { xs: 0.2, sm: 0.5 } }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: { xs: 0.4, sm: 0.8 } }}>
             לא קיבלת את הקוד?
           </Typography>
           <Button
@@ -207,14 +232,15 @@ export const OtpPage = () => {
           onClick={handleVerify}
           disabled={isSubmitting}
           sx={{
-            height: 56,
-            fontSize: '1.125rem',
+            width: '100%',
+            height: { xs: 50, sm: 56 },
+            fontSize: { xs: '1rem', sm: '1.125rem' },
             boxShadow: '0 10px 15px -3px rgba(0, 31, 61, 0.2)',
           }}
         >
           {isSubmitting ? 'מאמת...' : 'אימות וכניסה'}
         </Button>
-      </Column>
+      </Center>
     </Column>
   );
 };

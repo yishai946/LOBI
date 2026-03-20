@@ -12,6 +12,7 @@ import {
   CreateResidentCommand,
   UpdateMeCommand,
 } from "../validators/user.validator";
+import { PaginationOptions } from "../utils/pagination";
 
 export const createResident = async (
   currentUser: SessionPayload,
@@ -73,8 +74,13 @@ export const updateMe = async (
   });
 };
 
-export const getAllUsers = async () => {
-  return prisma.user.findMany();
+export const getAllUsers = async (pagination: PaginationOptions = {}) => {
+  const { limit, skip } = pagination;
+
+  return prisma.user.findMany({
+    skip,
+    take: limit,
+  });
 };
 
 export const getUserById = async (userId: string) => {

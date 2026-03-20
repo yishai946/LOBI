@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as apartmentService from "../services/apartment.service";
+import { parsePaginationQuery } from "../utils/pagination";
 
 export const createApartment = async (req: Request, res: Response) => {
   const apartment = await apartmentService.create(req.body);
@@ -11,7 +12,8 @@ export const createApartment = async (req: Request, res: Response) => {
 };
 
 export const getApartments = async (req: Request, res: Response) => {
-  const apartments = await apartmentService.getAll(req.user);
+  const pagination = parsePaginationQuery(req.query);
+  const apartments = await apartmentService.getAll(req.user, pagination);
 
   res.json(apartments);
 };

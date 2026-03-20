@@ -5,12 +5,9 @@ import {
   generateUploadUrls,
   getIssueById,
   getIssues,
+  moveIssueToNextStatus,
   updateIssue,
 } from "../controllers/issues.controller";
-import {
-  requireManagerOrResident,
-  requireResident,
-} from "../middlewares/session.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import {
   createIssueSchema,
@@ -20,22 +17,12 @@ import {
 
 const router = Router();
 
-router.post(
-  "/upload-urls",
-  requireResident,
-  validate(uploadUrlsSchema),
-  generateUploadUrls,
-);
-
-router.post("/", requireManagerOrResident, validate(createIssueSchema), createIssue);
-router.get("/", requireManagerOrResident, getIssues);
-router.get("/:issueId", requireManagerOrResident, getIssueById);
-router.patch(
-  "/:issueId",
-  requireManagerOrResident,
-  validate(updateIssueSchema),
-  updateIssue,
-);
-router.delete("/:issueId", requireManagerOrResident, deleteIssue);
+router.post("/upload-urls", validate(uploadUrlsSchema), generateUploadUrls);
+router.post("/", validate(createIssueSchema), createIssue);
+router.get("/", getIssues);
+router.get("/:issueId", getIssueById);
+router.patch("/:issueId", validate(updateIssueSchema), updateIssue);
+router.patch("/:issueId/next-status", moveIssueToNextStatus);
+router.delete("/:issueId", deleteIssue);
 
 export default router;

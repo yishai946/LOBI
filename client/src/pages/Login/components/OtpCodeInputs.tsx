@@ -18,7 +18,15 @@ export const OtpCodeInputs: React.FC<OtpCodeInputsProps> = ({
   onPaste,
 }) => {
   return (
-    <Row sx={{ justifyContent: 'center', gap: 1.5, mb: 4 }} dir="ltr">
+    <Row
+      sx={{
+        justifyContent: 'center',
+        gap: { xs: 0.75, sm: 1.25, md: 1.5 },
+        mb: { xs: 1.25, sm: 2.5, md: 3.5 },
+        width: '100%',
+      }}
+      dir="ltr"
+    >
       {otp.map((digit, index) => (
         <TextField
           key={index}
@@ -44,9 +52,9 @@ export const OtpCodeInputs: React.FC<OtpCodeInputsProps> = ({
             },
           }}
           sx={{
-            width: 48,
+            width: { xs: 40, sm: 46, md: 48 },
             '& .MuiOutlinedInput-root': {
-              height: 56,
+              height: { xs: 48, sm: 54, md: 56 },
               borderRadius: 2,
               bgcolor: 'background.paper',
             },

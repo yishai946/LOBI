@@ -3,13 +3,19 @@ import {
   CreateBuildingCommand,
   UpdateBuildingCommand,
 } from "../validators/building.validator";
+import { PaginationOptions } from "../utils/pagination";
 
 export const create = async (data: CreateBuildingCommand) => {
   return prisma.building.create({ data });
 };
 
-export const getAll = async () => {
-  return prisma.building.findMany();
+export const getAll = async (pagination: PaginationOptions = {}) => {
+  const { limit, skip } = pagination;
+
+  return prisma.building.findMany({
+    skip,
+    take: limit,
+  });
 };
 
 export const getById = async (id: string) => {

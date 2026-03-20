@@ -1,6 +1,7 @@
 import prisma from "../lib/prisma";
 import { HttpError } from "../utils/HttpError";
 import { CreateManagerCommand } from "../validators/manager.validator";
+import { PaginationOptions } from "../utils/pagination";
 
 export const createManager = async (data: CreateManagerCommand) => {
   const building = await prisma.building.findUnique({
@@ -17,9 +18,13 @@ export const createManager = async (data: CreateManagerCommand) => {
   });
 };
 
-export const getManagers = async () => {
+export const getManagers = async (pagination: PaginationOptions = {}) => {
+  const { limit, skip } = pagination;
+
   return prisma.manager.findMany({
     include: { user: true, building: true },
+    skip,
+    take: limit,
   });
 };
 

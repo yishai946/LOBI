@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as buildingService from "../services/building.service";
+import { parsePaginationQuery } from "../utils/pagination";
 
 export const createBuilding = async (req: Request, res: Response) => {
   const building = await buildingService.create(req.body);
@@ -11,14 +12,15 @@ export const createBuilding = async (req: Request, res: Response) => {
 };
 
 export const getAllBuildings = async (req: Request, res: Response) => {
-  const buildings = await buildingService.getAll();
-  
+  const pagination = parsePaginationQuery(req.query);
+  const buildings = await buildingService.getAll(pagination);
+
   res.json(buildings);
 };
 
 export const getBuildingById = async (req: Request, res: Response) => {
   const building = await buildingService.getById(req.params.id as string);
-  
+
   if (!building) {
     return res.status(404).json({ message: "Building not found" });
   }

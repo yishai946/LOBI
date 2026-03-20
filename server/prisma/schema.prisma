@@ -17,6 +17,12 @@ enum PaymentStatus {
   PAID
 }
 
+enum IssueStatus {
+  open
+  inProgress
+  done
+}
+
 model Building {
   id           String     @id @default(uuid())
   name         String?
@@ -40,7 +46,6 @@ model Apartment {
   building   Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   residents  Resident[]
   paymentAssignments PaymentAssignment[]
-  issues     Issue[]
 
   @@unique([buildingId, name])
   @@index([buildingId])
@@ -103,18 +108,20 @@ model Issue {
   id           String    @id @default(uuid())
   title        String
   description  String?
+  isUrgent     Boolean   @default(false)
+  status       IssueStatus @default(open)
+  openedAt     DateTime  @default(now())
+  inProgressAt DateTime?
+  doneAt       DateTime?
   createdById  String
   buildingId   String
-  apartmentId  String
   createdAt    DateTime  @default(now())
 
   building     Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  apartment    Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
   createdBy    User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
   images       IssueImage[]
 
   @@index([buildingId])
-  @@index([apartmentId])
   @@index([createdById])
 }
 

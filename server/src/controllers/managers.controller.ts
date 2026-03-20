@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as managerService from "../services/manager.service";
+import { parsePaginationQuery } from "../utils/pagination";
 
 export const createManager = async (req: Request, res: Response) => {
   const manager = await managerService.createManager(req.body);
@@ -10,8 +11,9 @@ export const createManager = async (req: Request, res: Response) => {
   });
 };
 
-export const getManagers = async (_req: Request, res: Response) => {
-  const managers = await managerService.getManagers();
+export const getManagers = async (req: Request, res: Response) => {
+  const pagination = parsePaginationQuery(req.query);
+  const managers = await managerService.getManagers(pagination);
 
   res.json(managers);
 };

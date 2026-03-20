@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Stripe from "stripe";
 import * as paymentService from "../services/payment.service";
 import { HttpError } from "../utils/HttpError";
+import { parsePaginationQuery } from "../utils/pagination";
 
 export const createPayment = async (req: Request, res: Response) => {
   const { payment } = await paymentService.createPayment(req.user, req.body);
@@ -14,7 +15,12 @@ export const createPayment = async (req: Request, res: Response) => {
 
 export const getPayments = async (req: Request, res: Response) => {
   const buildingId = req.query.buildingId as string | undefined;
-  const payments = await paymentService.getPayments(req.user, buildingId);
+  const pagination = parsePaginationQuery(req.query);
+  const payments = await paymentService.getPayments(
+    req.user,
+    buildingId,
+    pagination,
+  );
 
   res.json(payments);
 };
@@ -54,15 +60,18 @@ export const deletePayment = async (req: Request, res: Response) => {
 };
 
 export const getMyPayments = async (req: Request, res: Response) => {
-  const payments = await paymentService.getMyPayments(req.user);
+  const pagination = parsePaginationQuery(req.query);
+  const payments = await paymentService.getMyPayments(req.user, pagination);
 
   res.json(payments);
 };
 
 export const getPaymentAssignments = async (req: Request, res: Response) => {
+  const pagination = parsePaginationQuery(req.query);
   const assignments = await paymentService.getAssignmentsForPayment(
     req.user,
     req.params.paymentId as string,
+    pagination,
   );
 
   res.json(assignments);

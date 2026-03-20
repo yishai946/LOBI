@@ -10,6 +10,7 @@ import { SessionPayload } from "../types/auth";
 import { PaymentStatus } from "../../generated/prisma/enums";
 import { Prisma } from "../../generated/prisma/client";
 import { SessionType } from "../enums/sessionType.enum";
+import { PaginationOptions } from "../utils/pagination";
 
 let stripeClient: Stripe | null = null;
 
@@ -127,10 +128,15 @@ const resolveBuildingId = (
 export const getPayments = async (
   currentUser: SessionPayload,
   buildingId?: string,
+  pagination: PaginationOptions = {},
 ) => {
+  const { limit, skip } = pagination;
+
   if (currentUser.sessionType === SessionType.ADMIN && !buildingId) {
     return prisma.payment.findMany({
       orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
     });
   }
 
@@ -139,6 +145,8 @@ export const getPayments = async (
   const payments = await prisma.payment.findMany({
     where: { buildingId: targetBuildingId },
     orderBy: { createdAt: "desc" },
+    skip,
+    take: limit,
   });
 
   if (payments.length === 0) {
@@ -266,7 +274,10 @@ export const deletePayment = async (
 export const getAssignmentsForPayment = async (
   currentUser: SessionPayload,
   paymentId: string,
+  pagination: PaginationOptions = {},
 ) => {
+  const { limit, skip } = pagination;
+
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
   });
@@ -285,10 +296,17 @@ export const getAssignmentsForPayment = async (
   return prisma.paymentAssignment.findMany({
     where: { paymentId },
     include: { apartment: true },
+    skip,
+    take: limit,
   });
 };
 
-export const getMyPayments = async (currentUser: SessionPayload) => {
+export const getMyPayments = async (
+  currentUser: SessionPayload,
+  pagination: PaginationOptions = {},
+) => {
+  const { limit, skip } = pagination;
+
   if (!currentUser.apartmentId) {
     throw new HttpError("נדרש הקשר דירה", 400);
   }
@@ -297,6 +315,8 @@ export const getMyPayments = async (currentUser: SessionPayload) => {
     where: { apartmentId: currentUser.apartmentId },
     include: { payment: true },
     orderBy: { createdAt: "desc" },
+    skip,
+    take: limit,
   });
 };
 

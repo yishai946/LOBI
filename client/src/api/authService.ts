@@ -1,3 +1,4 @@
+import { User } from '@entities/User';
 import {
   CompleteProfileRequest,
   MessageResponse,
@@ -27,14 +28,12 @@ export const authService = {
 
   completeProfile: async (
     data: CompleteProfileRequest
-  ): Promise<{ message: string; user: { id: string; name: string | null } }> => {
+  ): Promise<{ message: string; user: User }> => {
     const response = await axiosInstance.post('/auth/complete-profile', data);
     return response.data;
   },
 
-  selectContext: async (
-    data: SelectContextRequest
-  ): Promise<SelectContextResponse> => {
+  selectContext: async (data: SelectContextRequest): Promise<SelectContextResponse> => {
     const response = await axiosInstance.post('/auth/select-context', data);
     return response.data;
   },

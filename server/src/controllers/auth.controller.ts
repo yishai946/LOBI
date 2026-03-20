@@ -76,10 +76,7 @@ export const completeProfile = async (req: Request, res: Response) => {
 
   res.json({
     message: "Profile completed",
-    user: {
-      id: updatedUser.id,
-      name: updatedUser.name,
-    },
+    user: updatedUser,
   });
 };
 

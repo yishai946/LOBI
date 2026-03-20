@@ -6,6 +6,7 @@ import {
   CreateResidentCommand,
   UpdateResidentCommand,
 } from "../validators/resident.validator";
+import { PaginationOptions } from "../utils/pagination";
 
 const ensureBuildingAccess = async (
   currentUser: SessionPayload,
@@ -39,10 +40,17 @@ export const createResident = async (
   });
 };
 
-export const getResidents = async (currentUser: SessionPayload) => {
+export const getResidents = async (
+  currentUser: SessionPayload,
+  pagination: PaginationOptions = {},
+) => {
+  const { limit, skip } = pagination;
+
   if (currentUser.sessionType === SessionType.ADMIN) {
     return prisma.resident.findMany({
       include: { user: true, apartment: true },
+      skip,
+      take: limit,
     });
   }
 
@@ -53,6 +61,8 @@ export const getResidents = async (currentUser: SessionPayload) => {
   return prisma.resident.findMany({
     where: { apartment: { buildingId: currentUser.buildingId } },
     include: { user: true, apartment: true },
+    skip,
+    take: limit,
   });
 };
 

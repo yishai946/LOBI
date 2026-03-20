@@ -7,6 +7,7 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import { authService } from '../../api/authService';
 import { Column, Center } from '../../components/containers';
 import { useGlobalMessage } from '../../providers/MessageProvider';
+import { AuthPageHeader } from './components/AuthPageHeader';
 
 export const LoginPage: React.FC = () => {
   const [phone, setPhone] = useState('');
@@ -60,167 +61,169 @@ export const LoginPage: React.FC = () => {
   return (
     <Column
       sx={{
-        height: '100vh',
+        height: '100dvh',
         overflow: 'hidden',
         bgcolor: 'background.default',
       }}
     >
+      <AuthPageHeader title="אימות חשבון" />
       <Center
+        textAlign="center"
         sx={{
-          gap: 1.5,
-          p: 2,
-          borderBottom: 1,
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Typography
-          variant="h6"
-          component="h2"
-          sx={{
-            textAlign: 'center',
-            fontWeight: 'bold',
-            color: 'primary.main',
-          }}
-        >
-          התחברות
-        </Typography>
-      </Center>
-
-      <Column
-        sx={{
-          alignItems: 'center',
-          textAlign: 'center',
-          px: 3,
-          pt: 6,
-          pb: 4,
+          flex: 1,
+          minHeight: 0,
+          width: '100%',
+          px: { xs: 2, sm: 3 },
+          pt: { xs: 1.5, sm: 2.5 },
+          pb: { xs: 'calc(14px + env(safe-area-inset-bottom, 0px))', sm: 2.5 },
+          gap: { xs: 4, sm: 2.5 },
         }}
       >
         <Box
           component="img"
           src="/images/logo.png"
           alt="לוגו LOBI"
+          width={{ xs: 68, sm: 50, md: 96 }}
+          height={{ xs: 68, sm: 50, md: 96 }}
+          mb={{ xs: 1, sm: 2.5 }}
           sx={{
-            width: 100,
-            height: 100,
             objectFit: 'contain',
-            mb: 3,
             filter: 'drop-shadow(0 8px 16px rgba(0, 31, 61, 0.18))',
           }}
         />
         <Typography
           variant="h4"
-          component="h1"
-          sx={{ fontWeight: 'bold', color: 'primary.main', mb: 1.5 }}
+          sx={{
+            fontWeight: 'bold',
+            color: 'primary.main',
+            mb: { xs: 0.5, sm: 1.25 },
+            fontSize: { xs: '1.5rem', sm: '1.9rem', md: '2.125rem' },
+            lineHeight: 1.2,
+          }}
         >
           ברוכים הבאים
         </Typography>
-        <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 280 }}>
-          הזן את מספר הטלפון שלך כדי להתחבר למערכת המאובטחת שלנו
-        </Typography>
-      </Column>
-
-      <Column
-        sx={{
-          gap: 3,
-          px: 3,
-          py: 2,
-          maxWidth: 480,
-          mx: 'auto',
-          width: '100%',
-        }}
-      >
-        <Column sx={{ width: '100%' }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'primary.main', mb: 1 }}>
-            מספר טלפון
-          </Typography>
-          <TextField
-            fullWidth
-            variant="outlined"
-            placeholder="05X-XXXXXXX"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            onKeyDown={handlePhoneKeyDown}
-            error={!!error}
-            helperText={error || 'קוד אימות יישלח אליך ב-SMS'}
-            InputProps={{
-              startAdornment: (
-                <Center
-                  sx={{
-                    pr: 2,
-                    color: 'text.secondary',
-                    borderRight: 1,
-                    borderColor: 'divider',
-                    mr: 2,
-                  }}
-                >
-                  <PhoneIcon />
-                </Center>
-              ),
-              sx: { height: 56, bgcolor: 'background.paper' },
-            }}
-            inputProps={{ dir: 'ltr' }}
-          />
-        </Column>
-
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSendOtp}
-          disabled={requestOtpMutation.isPending}
+        <Typography
+          variant="body1"
           sx={{
-            height: 56,
-            fontSize: '1.125rem',
-            boxShadow: '0 10px 15px -3px rgba(0, 31, 61, 0.2)',
+            color: 'text.secondary',
+            maxWidth: 320,
+            fontSize: { xs: '0.9rem', sm: '1rem' },
+            lineHeight: 1.35,
           }}
         >
-          {requestOtpMutation.isPending ? 'שולח...' : 'שלח קוד אימות'}
-        </Button>
-      </Column>
-
-      <Column
-        sx={{
-          mt: 'auto',
-          alignItems: 'center',
-          gap: 2,
-          pb: 6,
-          px: 3,
-        }}
-      >
-        <Typography variant="body2" color="text.secondary" align="center">
-          בכניסתך למערכת הינך מסכים ל
-          <Typography
-            component="a"
-            href="#"
-            variant="body2"
-            color="primary"
-            sx={{
-              fontWeight: 600,
-              textDecoration: 'underline',
-              textUnderlineOffset: 4,
-              mx: 0.5,
-            }}
-          >
-            תנאי השימוש
-          </Typography>
-          ול
-          <Typography
-            component="a"
-            href="#"
-            variant="body2"
-            color="primary"
-            sx={{
-              fontWeight: 600,
-              textDecoration: 'underline',
-              textUnderlineOffset: 4,
-              mx: 0.5,
-            }}
-          >
-            מדיניות הפרטיות
-          </Typography>
+          הזן את מספר הטלפון שלך כדי להתחבר למערכת המאובטחת שלנו
         </Typography>
-      </Column>
+
+        <Column
+          sx={{
+            gap: { xs: 1.5, sm: 2.5 },
+            px: { xs: 0, sm: 2, md: 3 },
+            py: { xs: 0.5, sm: 1.5 },
+            maxWidth: 480,
+            mx: 'auto',
+            width: '100%',
+          }}
+        >
+          <Column sx={{ width: '100%' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'primary.main', mb: 1 }}>
+              מספר טלפון
+            </Typography>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="05X-XXXXXXX"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={handlePhoneKeyDown}
+              error={!!error}
+              helperText={error || 'קוד אימות יישלח אליך ב-SMS'}
+              InputProps={{
+                startAdornment: (
+                  <Center
+                    sx={{
+                      pr: 2,
+                      color: 'text.secondary',
+                      borderRight: 1,
+                      borderColor: 'divider',
+                      mr: 2,
+                    }}
+                  >
+                    <PhoneIcon />
+                  </Center>
+                ),
+                sx: {
+                  height: { xs: 50, sm: 56 },
+                  bgcolor: 'background.paper',
+                },
+              }}
+              inputProps={{ dir: 'ltr' }}
+            />
+          </Column>
+
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSendOtp}
+            disabled={requestOtpMutation.isPending}
+            sx={{
+              height: { xs: 50, sm: 56 },
+              fontSize: { xs: '1rem', sm: '1.125rem' },
+              boxShadow: '0 10px 15px -3px rgba(0, 31, 61, 0.2)',
+            }}
+          >
+            {requestOtpMutation.isPending ? 'שולח...' : 'שלח קוד אימות'}
+          </Button>
+        </Column>
+
+        <Column
+          sx={{
+            alignItems: 'center',
+            gap: { xs: 1, sm: 1.5 },
+            px: { xs: 1, sm: 2 },
+            pb: { xs: 'calc(10px + env(safe-area-inset-bottom, 0px))', sm: 2 },
+          }}
+        >
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            align="center"
+            sx={{ lineHeight: 1.45 }}
+          >
+            בכניסתך למערכת הינך מסכים ל
+            <Typography
+              component="a"
+              href="#"
+              variant="body2"
+              color="primary"
+              sx={{
+                fontWeight: 600,
+                textDecoration: 'underline',
+                textUnderlineOffset: 4,
+                mx: 0.5,
+              }}
+            >
+              תנאי השימוש
+            </Typography>
+            ול
+            <Typography
+              component="a"
+              href="#"
+              variant="body2"
+              color="primary"
+              sx={{
+                fontWeight: 600,
+                textDecoration: 'underline',
+                textUnderlineOffset: 4,
+                mx: 0.5,
+              }}
+            >
+              מדיניות הפרטיות
+            </Typography>
+          </Typography>
+        </Column>
+      </Center>
     </Column>
   );
 };

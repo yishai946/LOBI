@@ -6,6 +6,7 @@ import {
 import { SessionPayload } from "../types/auth";
 import { HttpError } from "../utils/HttpError";
 import { SessionType } from "../enums/sessionType.enum";
+import { PaginationOptions } from "../utils/pagination";
 
 export const create = async (data: CreateApartmentCommand) =>
   prisma.apartment.create({ data });
@@ -21,9 +22,17 @@ const ensureAccess = async (
   }
 };
 
-export const getAll = async (currentUser: SessionPayload) => {
+export const getAll = async (
+  currentUser: SessionPayload,
+  pagination: PaginationOptions = {},
+) => {
+  const { limit, skip } = pagination;
+
   if (currentUser.sessionType === SessionType.ADMIN) {
-    return prisma.apartment.findMany();
+    return prisma.apartment.findMany({
+      skip,
+      take: limit,
+    });
   }
 
   if (!currentUser.buildingId) {
@@ -32,6 +41,8 @@ export const getAll = async (currentUser: SessionPayload) => {
 
   return prisma.apartment.findMany({
     where: { buildingId: currentUser.buildingId },
+    skip,
+    take: limit,
   });
 };
 

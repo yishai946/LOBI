@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { lazy, ReactNode } from 'react';
 
 const HomePage = lazy(() =>
-  import('@pages/Home/HomePage').then((module) => ({ default: module.HomePage }))
+  import('@pages/ResidentDashboard').then((module) => ({ default: module.ResidentDashboard }))
 );
 const LoginPage = lazy(() =>
   import('@pages/Login/LoginPage').then((module) => ({ default: module.LoginPage }))

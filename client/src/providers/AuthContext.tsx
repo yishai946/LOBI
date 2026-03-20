@@ -4,6 +4,7 @@ import { AuthContextData } from '../entities/AuthContextData';
 import { User } from '../entities/User';
 import { userService } from '../api/userService';
 import { useGlobalMessage } from './MessageProvider';
+import { useNavigate } from 'react-router-dom';
 
 const authQueryKeys = {
   me: ['auth', 'me'] as const,
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { showError, showSuccess } = useGlobalMessage();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
@@ -44,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const meQuery = useQuery({
     queryKey: authQueryKeys.me,
     queryFn: userService.getMe,
-    enabled: Boolean(token),
+    enabled: !!token,
     retry: false,
   });
   const isLoading = meQuery.isLoading;
@@ -121,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setContexts([]);
     setCurrentContext(null);
     setNeedsProfileCompletion(false);
+    navigate('/login', { replace: true });
   };
 
   return (

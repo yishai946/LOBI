@@ -15,7 +15,7 @@ import { ContextType } from '../../enums/ContextType';
 import { authService } from '../../api/authService';
 import { Row, Column, Center } from '../../components/containers';
 
-export const ContextSelectionPage: React.FC = () => {
+export const ContextSelectionPage = () => {
   const { contexts, currentContext, setContext } = useAuth();
   const { showSuccess, showError } = useGlobalMessage();
   const navigate = useNavigate();
@@ -37,17 +37,17 @@ export const ContextSelectionPage: React.FC = () => {
         apartmentId: context.apartmentId,
       }),
     onSuccess: (response, variables) => {
-      showSuccess('ההקשר נבחר בהצלחה');
+      showSuccess('הפרופיל נבחר בהצלחה');
       setContext(variables.context, response.token);
       navigate('/home', { replace: true });
     },
     onError: (error) => {
-      showError(getErrorMessage(error, 'שגיאה בבחירת הקשר'));
+      showError(getErrorMessage(error, 'שגיאה בבחירת פרופיל'));
     },
   });
   const error = axios.isAxiosError(selectContextMutation.error)
     ? (selectContextMutation.error.response?.data as { message?: string } | undefined)?.message ||
-      'שגיאה בבחירת הקשר'
+      'שגיאה בבחירת פרופיל'
     : '';
 
   const handleSelectContext = (context: AuthContextData) => {
@@ -142,7 +142,6 @@ export const ContextSelectionPage: React.FC = () => {
       sx={{
         minHeight: '100vh',
         width: '100%',
-        maxWidth: 430,
         mx: 'auto',
         bgcolor: '#F5F7FB',
         overflowX: 'hidden',
@@ -172,23 +171,11 @@ export const ContextSelectionPage: React.FC = () => {
             color: 'text.primary',
           }}
         >
-          בחר הקשר
+          בחר פרופיל
         </Typography>
-        <IconButton onClick={() => navigate('/login')} sx={{ color: '#0F172A' }} aria-label="close">
-          <CloseIcon />
-        </IconButton>
       </Row>
 
-      <Box sx={{ px: 2, pt: 3, pb: 1.5 }}>
-        <Typography
-          variant="body2"
-          sx={{ color: 'text.secondary', fontWeight: 500, textAlign: 'right' }}
-        >
-          הקשרים זמינים עבורך
-        </Typography>
-      </Box>
-
-      <Column sx={{ gap: 2, px: 1.5, pb: 3 }}>
+      <Column mt={2} sx={{ gap: 2, px: 1.5, pb: 3 }}>
         {error && (
           <Alert severity="error" variant="outlined" sx={{ mx: 0.5 }}>
             {error}
@@ -321,7 +308,7 @@ export const ContextSelectionPage: React.FC = () => {
 
         {contexts.length === 0 && (
           <Typography sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-            לא נמצאו הקשרים זמינים עבורך.
+            לא נמצאו פרופילים זמינים. אנא פנה לתמיכה לקבלת עזרה.
           </Typography>
         )}
       </Column>

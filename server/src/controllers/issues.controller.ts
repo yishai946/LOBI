@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as issuesService from "../services/issues.service";
+import { parsePaginationQuery } from "../utils/pagination";
 
 export const generateUploadUrls = async (req: Request, res: Response) => {
   const result = await issuesService.createUploadUrls(req.user, req.body);
@@ -17,7 +18,8 @@ export const createIssue = async (req: Request, res: Response) => {
 };
 
 export const getIssues = async (req: Request, res: Response) => {
-  const issues = await issuesService.getIssues(req.user);
+  const pagination = parsePaginationQuery(req.query);
+  const issues = await issuesService.getIssues(req.user, pagination);
 
   res.json(issues);
 };
@@ -40,6 +42,18 @@ export const updateIssue = async (req: Request, res: Response) => {
 
   res.json({
     message: "Issue updated successfully",
+    issue,
+  });
+};
+
+export const moveIssueToNextStatus = async (req: Request, res: Response) => {
+  const issue = await issuesService.moveIssueToNextStatus(
+    req.user,
+    req.params.issueId as string,
+  );
+
+  res.json({
+    message: "Issue status updated successfully",
     issue,
   });
 };

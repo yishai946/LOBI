@@ -10,7 +10,7 @@ import {
   paymentWebhook,
   updatePayment,
 } from "../controllers/payment.controller";
-import { requireManager, requireResident } from "../middlewares/session.middleware";
+import { requireManager } from "../middlewares/session.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import {
   checkoutPaymentSchema,
@@ -23,7 +23,7 @@ const webhookRouter = Router();
 
 router.post("/", requireManager, validate(createPaymentSchema), createPayment);
 router.get("/", requireManager, getPayments);
-router.get("/my", requireResident, getMyPayments);
+router.get("/my", getMyPayments);
 router.get("/:paymentId/assignments", requireManager, getPaymentAssignments);
 router.get("/:paymentId", requireManager, getPaymentById);
 router.patch(
@@ -35,7 +35,6 @@ router.patch(
 router.delete("/:paymentId", requireManager, deletePayment);
 router.post(
   "/:assignmentId/checkout",
-  requireResident,
   validate(checkoutPaymentSchema),
   createCheckoutSession,
 );
