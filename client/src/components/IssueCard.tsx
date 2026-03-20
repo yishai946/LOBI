@@ -1,9 +1,9 @@
-import { IssueStatus } from '@enums/IssueStatus';
 import { Issue } from '@entities/Issue';
-import { Card, Column, Row } from './containers';
-import { alpha, Box, Chip, Skeleton, Typography, type Theme } from '@mui/material';
+import { IssueStatus } from '@enums/IssueStatus';
+import { Box, Chip, Skeleton, Typography, type Theme } from '@mui/material';
 import { getIssueStatusTimelineMessage } from '@utils/funcs';
 import { useEffect, useState } from 'react';
+import { Card, Column, Row } from './containers';
 
 interface IssueCardProps {
   item: Issue;

@@ -1,10 +1,22 @@
 import { ContextType } from '@enums/ContextType';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded';
+import IssuesRoundedIcon from '@mui/icons-material/WarningRounded';
+import MessagesRoundedIcon from '@mui/icons-material/MarkunreadRounded';
 import { Navigate } from 'react-router-dom';
 import { lazy, ReactNode } from 'react';
 
 const HomePage = lazy(() =>
   import('@pages/ResidentDashboard').then((module) => ({ default: module.ResidentDashboard }))
+);
+const IssuesPage = lazy(() =>
+  import('@pages/Issues').then((module) => ({ default: module.IssuesPage }))
+);
+const MessagesPage = lazy(() =>
+  import('@pages/Messages').then((module) => ({ default: module.MessagesPage }))
+);
+const PaymentsPage = lazy(() =>
+  import('@pages/Payments').then((module) => ({ default: module.PaymentsPage }))
 );
 const LoginPage = lazy(() =>
   import('@pages/Login/LoginPage').then((module) => ({ default: module.LoginPage }))
@@ -55,6 +67,33 @@ const Pages: PageDefinition[] = [
     element: <HomePage />,
     title: 'בית',
     icon: <HomeRoundedIcon />,
+    isVisibleInMenu: true,
+    isProtected: true,
+    requireContext: true,
+  },
+  {
+    path: '/payments',
+    element: <PaymentsPage />,
+    title: 'תשלומים',
+    icon: <PaymentsRoundedIcon />,
+    isVisibleInMenu: true,
+    isProtected: true,
+    requireContext: true,
+  },
+  {
+    path: '/issues',
+    element: <IssuesPage />,
+    title: 'תקלות',
+    icon: <IssuesRoundedIcon />,
+    isVisibleInMenu: true,
+    isProtected: true,
+    requireContext: true,
+  },
+  {
+    path: '/messages',
+    element: <MessagesPage />,
+    title: 'הודעות',
+    icon: <MessagesRoundedIcon />,
     isVisibleInMenu: true,
     isProtected: true,
     requireContext: true,
