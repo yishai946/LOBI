@@ -1,9 +1,11 @@
 import { apartmentService } from '@api/apartmentService';
 import { issuesService } from '@api/issuesService';
 import { messageService } from '@api/messageService';
+import { paymentService } from '@api/paymentService';
 import Banner from '@components/Banner';
-import { IssueCard } from '@components/IssueCard';
-import { MessageCard } from '@components/MessageCard';
+import { IssueCard } from '@components/Cards/IssueCard';
+import { MessageCard } from '@components/Cards/MessageCard';
+import { PaymentAssignmentCard } from '@components/Cards/PaymentAssignmentCard';
 import { useQuery } from '@tanstack/react-query';
 import { getBlessingByTime } from '@utils/funcs';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +35,11 @@ export const ResidentDashboard = () => {
     enabled: !!currentContext,
   });
 
+  const { data: nextPayment } = useQuery({
+    queryKey: ['payments', 'my', 'next', apartmentId],
+    queryFn: paymentService.getMyNextPayment,
+    enabled: !!apartmentId,
+  });
   const apartmentSubtitle = apartmentData
     ? `דירה ${apartmentData.name}`
     : apartmentId
@@ -46,7 +53,27 @@ export const ResidentDashboard = () => {
         subtitle={apartmentSubtitle}
         isLoading={apartmentLoading}
       />
-      <Column gap={4}>
+      <Column
+        gap={4}
+        direction={{ xs: 'column', md: 'row' }}
+        px={1}
+        sx={{
+          alignItems: 'stretch',
+          '& > *': {
+            flex: 1,
+            minWidth: 0,
+          },
+        }}
+      >
+        {nextPayment && (
+          <CardList
+            ItemComponent={PaymentAssignmentCard}
+            items={nextPayment ? [nextPayment] : []}
+            title="תשלום קרוב"
+            emptyMessage="כל התשלומים בוצעו בהצלחה!"
+            onClick={() => navigate('/payments')}
+          />
+        )}
         <CardList
           ItemComponent={MessageCard}
           items={latestMessages || []}

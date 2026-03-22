@@ -3,8 +3,10 @@ import {
   createCheckoutSession,
   createPayment,
   deletePayment,
+  getPublicReceipt,
   getPaymentAssignments,
   getPaymentById,
+  getMyNextPayment,
   getMyPayments,
   getPayments,
   paymentWebhook,
@@ -20,10 +22,12 @@ import {
 
 const router = Router();
 const webhookRouter = Router();
+const publicRouter = Router();
 
 router.post("/", requireManager, validate(createPaymentSchema), createPayment);
 router.get("/", requireManager, getPayments);
 router.get("/my", getMyPayments);
+router.get("/my/next", getMyNextPayment);
 router.get("/:paymentId/assignments", requireManager, getPaymentAssignments);
 router.get("/:paymentId", requireManager, getPaymentById);
 router.patch(
@@ -40,6 +44,8 @@ router.post(
 );
 
 webhookRouter.post("/", paymentWebhook);
+publicRouter.get("/receipt", getPublicReceipt);
 
 export { webhookRouter as paymentWebhookRouter };
+export { publicRouter as paymentPublicRouter };
 export default router;

@@ -18,6 +18,11 @@ const MessagesPage = lazy(() =>
 const PaymentsPage = lazy(() =>
   import('@pages/Payments').then((module) => ({ default: module.PaymentsPage }))
 );
+const PaymentSuccessPage = lazy(() =>
+  import('@pages/Payments/PaymentSuccessPage').then((module) => ({
+    default: module.PaymentSuccessPage,
+  }))
+);
 const LoginPage = lazy(() =>
   import('@pages/Login/LoginPage').then((module) => ({ default: module.LoginPage }))
 );
@@ -79,6 +84,11 @@ const Pages: PageDefinition[] = [
     isVisibleInMenu: true,
     isProtected: true,
     requireContext: true,
+  },
+  {
+    path: '/payments/success',
+    element: <PaymentSuccessPage />,
+    isVisibleInMenu: false,
   },
   {
     path: '/issues',

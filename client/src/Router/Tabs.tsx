@@ -131,6 +131,12 @@ const Tabs = () => {
           borderTopLeftRadius: 18,
           borderTopRightRadius: 18,
           overflow: 'hidden',
+          border: '1px solid rgba(255, 255, 255, 0.42)',
+          bgcolor: 'rgba(255, 255, 255, 0.26)',
+          backdropFilter: 'blur(14px) saturate(145%)',
+          WebkitBackdropFilter: 'blur(14px) saturate(145%)',
+          boxShadow:
+            '0 1px 0 rgba(255, 255, 255, 0.32) inset, 0 -16px 36px rgba(15, 23, 42, 0.2), 0 -6px 16px rgba(15, 23, 42, 0.12)',
         }}
       >
         <BottomNavigation
@@ -143,6 +149,7 @@ const Tabs = () => {
           }}
           sx={{
             height: 68,
+            backgroundColor: 'transparent',
             '& .MuiBottomNavigationAction-root': {
               minWidth: 64,
             },

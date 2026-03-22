@@ -88,7 +88,6 @@ describe("Payment routes", () => {
         currency: "ILS",
         buildingId,
         isRecurring: false,
-        status: "PENDING",
       },
     });
   };
@@ -108,6 +107,7 @@ describe("Payment routes", () => {
         title: "March",
         description: "Maintenance",
         amount: 120,
+        dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         buildingId: building.id,
         isRecurring: true,
       });
@@ -131,6 +131,7 @@ describe("Payment routes", () => {
         title: "March",
         description: "Maintenance",
         amount: 120,
+        dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         buildingId: building.id,
         isRecurring: true,
       });
@@ -290,6 +291,7 @@ describe("Payment routes", () => {
         title: "April",
         description: "Fees",
         amount: 50,
+        dueAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
         buildingId: building.id,
         isRecurring: false,
       });
@@ -470,6 +472,55 @@ describe("Payment routes", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.length).toBeGreaterThan(0);
+  });
+
+  it("resident can get next unpaid payment", async () => {
+    const { residentUser, building, apartment } = await createBasicContext();
+    const firstPayment = await prisma.payment.create({
+      data: {
+        title: "Early",
+        amount: new Prisma.Decimal(80),
+        buildingId: building.id,
+        dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+    const secondPayment = await prisma.payment.create({
+      data: {
+        title: "Later",
+        amount: new Prisma.Decimal(90),
+        buildingId: building.id,
+        dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    await prisma.paymentAssignment.create({
+      data: {
+        paymentId: secondPayment.id,
+        apartmentId: apartment.id,
+        status: "PENDING",
+      },
+    });
+    await prisma.paymentAssignment.create({
+      data: {
+        paymentId: firstPayment.id,
+        apartmentId: apartment.id,
+        status: "PENDING",
+      },
+    });
+
+    const residentToken = signToken({
+      userId: residentUser.id,
+      sessionType: SessionType.RESIDENT,
+      buildingId: building.id,
+      apartmentId: apartment.id,
+    });
+
+    const res = await request(app)
+      .get("/api/payments/my/next")
+      .set("Authorization", `Bearer ${residentToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body?.payment?.id).toBe(firstPayment.id);
   });
 
   it("manager can update payment", async () => {

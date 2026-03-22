@@ -7,7 +7,7 @@ export const UnauthorizedPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <Center sx={{ minHeight: '100vh', px: 3, bgcolor: 'background.default' }}>
+    <Center sx={{ minHeight: '100vh', px: 3, background: 'transparent' }}>
       <Column sx={{ maxWidth: 360, textAlign: 'center', gap: 2.5, alignItems: 'center' }}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           אין הרשאה לצפייה

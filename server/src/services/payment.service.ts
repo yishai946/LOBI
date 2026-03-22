@@ -72,9 +72,9 @@ export const createPayment = async (
         description: data.description,
         amount: new Prisma.Decimal(data.amount),
         currency: DEFAULT_CURRENCY,
+        dueAt: data.dueAt,
         buildingId: data.buildingId,
         isRecurring: data.isRecurring,
-        status: PaymentStatus.PENDING,
       },
     });
 
@@ -244,6 +244,7 @@ export const updatePayment = async (
       title: data.title,
       description: data.description,
       amount: data.amount ? new Prisma.Decimal(data.amount) : undefined,
+      dueAt: data.dueAt,
       isRecurring: data.isRecurring,
     },
   });
@@ -314,9 +315,42 @@ export const getMyPayments = async (
   return prisma.paymentAssignment.findMany({
     where: { apartmentId: currentUser.apartmentId },
     include: { payment: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: [
+      {
+        payment: {
+          dueAt: "asc",
+        },
+      },
+      {
+        createdAt: "desc",
+      },
+    ],
     skip,
     take: limit,
+  });
+};
+
+export const getMyNextPayment = async (currentUser: SessionPayload) => {
+  if (!currentUser.apartmentId) {
+    throw new HttpError("נדרש הקשר דירה", 400);
+  }
+
+  return prisma.paymentAssignment.findFirst({
+    where: {
+      apartmentId: currentUser.apartmentId,
+      status: PaymentStatus.PENDING,
+    },
+    include: { payment: true },
+    orderBy: [
+      {
+        payment: {
+          dueAt: "asc",
+        },
+      },
+      {
+        createdAt: "asc",
+      },
+    ],
   });
 };
 
@@ -339,10 +373,11 @@ export const createCheckoutSession = async (
     throw new HttpError("התשלום כבר הושלם", 400);
   }
 
-  if (
-    currentUser.sessionType === SessionType.RESIDENT &&
-    currentUser.apartmentId !== assignment.apartmentId
-  ) {
+  if (currentUser.sessionType !== SessionType.RESIDENT) {
+    throw new HttpError("אסור", 403);
+  }
+
+  if (currentUser.apartmentId !== assignment.apartmentId) {
     throw new HttpError("אסור", 403);
   }
 
@@ -380,7 +415,7 @@ export const createCheckoutSession = async (
       userId: currentUser.userId,
     },
     success_url: `${baseUrl}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/payments/cancel`,
+    cancel_url: `${baseUrl}`,
   });
 
   if (!session.url) {
@@ -407,4 +442,66 @@ export const markAssignmentPaid = async (
       paidById: paidById || undefined,
     },
   });
+};
+
+export const getCustomReceiptBySessionId = async (stripeSessionId: string) => {
+  const assignment = await prisma.paymentAssignment.findUnique({
+    where: { stripeSessionId },
+    include: {
+      payment: {
+        include: {
+          building: true,
+        },
+      },
+      apartment: true,
+      paidBy: true,
+    },
+  });
+
+  if (!assignment) {
+    throw new HttpError("התשלום לא נמצא", 404);
+  }
+
+  if (assignment.status !== PaymentStatus.PAID) {
+    throw new HttpError("הקבלה תהיה זמינה לאחר אישור התשלום", 400);
+  }
+
+  const amount = assignment.payment.amount.toNumber();
+  const currency = assignment.payment.currency || DEFAULT_CURRENCY;
+
+  const formattedAmount = new Intl.NumberFormat("he-IL", {
+    style: "currency",
+    currency,
+  }).format(amount);
+
+  const issueDate = assignment.paidAt || new Date();
+  const receiptNumber = `REC-${assignment.id.slice(0, 8).toUpperCase()}`;
+
+  return {
+    receiptNumber,
+    stripeSessionId,
+    issueDateIso: issueDate.toISOString(),
+    formattedAmount,
+    amount,
+    currency,
+    paymentTitle: assignment.payment.title,
+    paymentDescription: assignment.payment.description,
+    paidAtIso: assignment.paidAt?.toISOString() || null,
+    buildingName: assignment.payment.building.name || "בניין ללא שם",
+    buildingAddress: assignment.payment.building.address,
+    apartmentName: assignment.apartment.name,
+    payerName: assignment.paidBy?.name || "דייר",
+    payerPhone: assignment.paidBy?.phone || "",
+    businessName:
+      process.env.RECEIPT_BUSINESS_NAME ||
+      assignment.payment.building.name ||
+      "ועד הבית",
+    businessId: process.env.RECEIPT_BUSINESS_ID || "לא צוין",
+    businessType: process.env.RECEIPT_BUSINESS_TYPE || "עוסק",
+    businessAddress:
+      process.env.RECEIPT_BUSINESS_ADDRESS ||
+      assignment.payment.building.address,
+    businessPhone: process.env.RECEIPT_BUSINESS_PHONE || "",
+    businessEmail: process.env.RECEIPT_BUSINESS_EMAIL || "",
+  };
 };

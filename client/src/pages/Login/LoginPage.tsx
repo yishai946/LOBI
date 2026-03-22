@@ -81,7 +81,7 @@ export const LoginPage: React.FC = () => {
       >
         <Box
           component="img"
-          src="/images/logo.png"
+          src="/assets/logo.png"
           alt="לוגו LOBI"
           width={{ xs: 68, sm: 50, md: 96 }}
           height={{ xs: 68, sm: 50, md: 96 }}
@@ -155,7 +155,9 @@ export const LoginPage: React.FC = () => {
                 ),
                 sx: {
                   height: { xs: 50, sm: 56 },
-                  bgcolor: 'background.paper',
+                  bgcolor: 'rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
                 },
               }}
               inputProps={{ dir: 'ltr' }}

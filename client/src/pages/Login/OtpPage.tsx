@@ -145,7 +145,7 @@ export const OtpPage = () => {
         >
           <Box
             component="img"
-            src="/images/logo.png"
+            src="/assets/logo.png"
             alt="לוגו LOBI"
             sx={{
               width: { xs: 64, sm: 82, md: 94 },

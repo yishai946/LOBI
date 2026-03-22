@@ -128,7 +128,12 @@ export const CompleteProfilePage: React.FC = () => {
             error={Boolean(error)}
             helperText={error || 'השם יוצג לדיירים ולמנהלי המבנה'}
             InputProps={{
-              sx: { height: 56, bgcolor: 'background.paper' },
+              sx: {
+                height: 56,
+                bgcolor: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+              },
             }}
           />
         </Column>

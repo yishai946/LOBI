@@ -24,121 +24,119 @@ enum IssueStatus {
 }
 
 model Building {
-  id           String     @id @default(uuid())
-  name         String?
-  address      String
-  logoUrl      String?
-  createdAt    DateTime   @default(now())
+  id        String   @id @default(uuid())
+  name      String?
+  address   String
+  logoUrl   String?
+  createdAt DateTime @default(now())
 
-  apartments   Apartment[]
-  managers     Manager[]
-  messages     Message[]
-  issues       Issue[]
-  payments     Payment[]
+  apartments Apartment[]
+  managers   Manager[]
+  messages   Message[]
+  issues     Issue[]
+  payments   Payment[]
 }
 
 model Apartment {
-  id         String    @id @default(uuid())
+  id         String   @id @default(uuid())
   name       String
   buildingId String
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime @default(now())
 
-  building   Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  residents  Resident[]
+  building           Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  residents          Resident[]
   paymentAssignments PaymentAssignment[]
 
   @@unique([buildingId, name])
   @@index([buildingId])
 }
 
-
 model User {
-  id          String    @id @default(uuid())
-  phone       String    @unique
-  name        String?
-  role        UserRole  @default(USER)
-  isActive    Boolean   @default(true)
-  otpCode     String?
-  otpExpires  DateTime?
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(uuid())
+  phone      String    @unique
+  name       String?
+  role       UserRole  @default(USER)
+  isActive   Boolean   @default(true)
+  otpCode    String?
+  otpExpires DateTime?
+  createdAt  DateTime  @default(now())
 
-  issues      Issue[]
+  issues             Issue[]
   paymentAssignments PaymentAssignment[]
 
-  manages Manager[]
+  manages    Manager[]
   apartments Resident[]
 }
 
 model Resident {
-  id          String?  @unique @default(uuid())
+  id          String? @unique @default(uuid())
   userId      String
   apartmentId String
 
-  user        User @relation(fields: [userId], references: [id])
-  apartment   Apartment @relation(fields: [apartmentId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  apartment Apartment @relation(fields: [apartmentId], references: [id])
 
   @@id([userId, apartmentId])
 }
 
 model Manager {
-  id         String    @id @default(uuid())
-  userId     String    
+  id         String @id @default(uuid())
+  userId     String
   buildingId String
 
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  building   Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
   @@unique([userId, buildingId])
 }
 
 model Message {
-  id         String    @id @default(uuid())
+  id         String   @id @default(uuid())
   buildingId String
   title      String
   content    String
-  isUrgent   Boolean   @default(false)
-  createdAt  DateTime  @default(now())
+  isUrgent   Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  building   Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
   @@index([buildingId])
 }
 
 model Issue {
-  id           String    @id @default(uuid())
+  id           String      @id @default(uuid())
   title        String
   description  String?
-  isUrgent     Boolean   @default(false)
+  isUrgent     Boolean     @default(false)
   status       IssueStatus @default(open)
-  openedAt     DateTime  @default(now())
+  openedAt     DateTime    @default(now())
   inProgressAt DateTime?
   doneAt       DateTime?
   createdById  String
   buildingId   String
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime    @default(now())
 
-  building     Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  createdBy    User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  images       IssueImage[]
+  building  Building     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  createdBy User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  images    IssueImage[]
 
   @@index([buildingId])
   @@index([createdById])
 }
 
 model Payment {
-  id              String        @id @default(uuid())
+  id              String   @id @default(uuid())
   title           String
   description     String?
   amount          Decimal
-  currency        String        @default("ILS")
+  currency        String   @default("ILS")
+  dueAt           DateTime @default(now())
   buildingId      String
-  stripeSessionId String?       @unique
-  isRecurring     Boolean       @default(false)
-  status          PaymentStatus @default(PENDING)
-  createdAt       DateTime      @default(now())
+  isRecurring     Boolean  @default(false)
+  createdAt       DateTime @default(now())
 
-  building        Building      @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  assignments     PaymentAssignment[]
+  building    Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  assignments PaymentAssignment[]
 
   @@index([buildingId])
 }
@@ -153,9 +151,9 @@ model PaymentAssignment {
   paidById        String?
   createdAt       DateTime      @default(now())
 
-  payment         Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  apartment       Apartment     @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
-  paidBy          User?         @relation(fields: [paidById], references: [id], onDelete: SetNull)
+  payment   Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  paidBy    User?     @relation(fields: [paidById], references: [id], onDelete: SetNull)
 
   @@unique([paymentId, apartmentId])
   @@index([paymentId])
@@ -168,7 +166,7 @@ model IssueImage {
   imageKey  String
   createdAt DateTime @default(now())
 
-  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
 
   @@index([issueId])
 }

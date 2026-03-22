@@ -15,7 +15,10 @@ import buildingRoutes from "./routes/building.routes";
 import issuesRoutes from "./routes/issues.routes";
 import managersRoutes from "./routes/managers.routes";
 import messagesRoutes from "./routes/messages.routes";
-import paymentRoutes, { paymentWebhookRouter } from "./routes/payment.routes";
+import paymentRoutes, {
+  paymentPublicRouter,
+  paymentWebhookRouter,
+} from "./routes/payment.routes";
 import residentsRoutes from "./routes/residents.routes";
 import usersRoutes from "./routes/users.routes";
 
@@ -50,6 +53,7 @@ app.get("/docs-json", (_req, res) => {
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/payments/public", paymentPublicRouter);
 app.use("/api/users", authMiddleware, usersRoutes);
 app.use("/api/buildings", authMiddleware, buildingRoutes);
 app.use("/api/apartments", authMiddleware, apartmentRoutes);

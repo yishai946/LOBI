@@ -5,7 +5,7 @@ import Tabs from './Tabs';
 
 const Layout = () => {
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: '100vh', background: 'transparent' }}>
       <Header />
       <Box component="main" p={2} pb={14}>
         <Outlet />

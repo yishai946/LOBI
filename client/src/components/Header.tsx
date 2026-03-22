@@ -2,6 +2,7 @@ import { Box, Typography } from '@mui/material';
 import { Center, Row } from './containers';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import { useAuth } from '@providers/AuthContext';
+import { translateContextType } from '@utils/contextTypeTranslations';
 
 export const Header = () => {
   const { currentContext } = useAuth();
@@ -14,8 +15,12 @@ export const Header = () => {
         top: 0,
         zIndex: 10,
         borderBottom: 1,
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
+        borderColor: 'rgba(255, 255, 255, 0.4)',
+        bgcolor: 'rgba(255, 255, 255, 0.28)',
+        backdropFilter: 'blur(14px) saturate(145%)',
+        WebkitBackdropFilter: 'blur(14px) saturate(145%)',
+        boxShadow:
+          '0 2px 0 rgba(255, 255, 255, 0.34) inset, 0 14px 34px rgba(15, 23, 42, 0.18), 0 6px 14px rgba(15, 23, 42, 0.1)',
       }}
     >
       <Row sx={{ alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
@@ -33,10 +38,10 @@ export const Header = () => {
           </Center>
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
-              {currentContext?.buildingName || 'LOBI'}
+              {currentContext?.buildingName || 'לובי'}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {currentContext?.type}
+              {translateContextType(currentContext?.type)}
             </Typography>
           </Box>
         </Row>

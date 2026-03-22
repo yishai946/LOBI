@@ -56,7 +56,9 @@ export const OtpCodeInputs: React.FC<OtpCodeInputsProps> = ({
             '& .MuiOutlinedInput-root': {
               height: { xs: 48, sm: 54, md: 56 },
               borderRadius: 2,
-              bgcolor: 'background.paper',
+              bgcolor: 'rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
             },
           }}
         />

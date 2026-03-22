@@ -5,14 +5,14 @@ export const theme = createTheme({
     mode: 'light',
 
     primary: {
-      main: '#2563EB',
-      light: '#60A5FA',
-      dark: '#1E40AF',
+      main: '#7B5EA7', // lavender-purple — matches banner hero
+      light: '#A98FD4', // lighter purple for hover states
+      dark: '#533A7B', // deeper purple for pressed/active
       contrastText: '#ffffff',
     },
 
     secondary: {
-      main: '#14B8A6',
+      main: '#14B8A6', // keeping teal — complements lavender beautifully
       light: '#5EEAD4',
       dark: '#0F766E',
       contrastText: '#ffffff',
@@ -24,8 +24,8 @@ export const theme = createTheme({
     },
 
     info: {
-      main: '#1D4ED8',
-      light: '#DBEAFE',
+      main: '#6D4FBF', // shifted to purple-info to stay in family
+      light: '#EDE9FB',
     },
 
     warning: {
@@ -34,7 +34,8 @@ export const theme = createTheme({
     },
 
     error: {
-      main: '#DC2626',
+      main: '#CC5252',
+      light: '#FEE2E2',
     },
 
     background: {
@@ -43,7 +44,7 @@ export const theme = createTheme({
     },
 
     text: {
-      primary: '#111827',
+      primary: '#120d2e',
       secondary: '#6B7280',
     },
 
@@ -87,6 +88,13 @@ export const theme = createTheme({
           borderRadius: 8,
           padding: '8px 18px',
         },
+        // Contained buttons echo the lavender banner
+        containedPrimary: {
+          background: 'linear-gradient(135deg, #7B5EA7 0%, #533A7B 100%)',
+          '&:hover': {
+            background: 'linear-gradient(135deg, #A98FD4 0%, #7B5EA7 100%)',
+          },
+        },
       },
     },
 
@@ -94,7 +102,22 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 14,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+          backgroundColor: 'rgba(255, 255, 255, 0.22)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.4)',
+          boxShadow: '0 8px 20px rgba(15, 23, 42, 0.08)',
+        },
+      },
+    },
+
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(255, 255, 255, 0.22)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.4)',
         },
       },
     },
@@ -104,13 +127,48 @@ export const theme = createTheme({
         variant: 'outlined',
         size: 'small',
       },
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#7B5EA7',
+          },
+          '& .MuiInputLabel-root.Mui-focused': {
+            color: '#7B5EA7',
+          },
+        },
+      },
     },
 
     MuiAppBar: {
       styleOverrides: {
         root: {
+          backgroundColor: 'rgba(255, 255, 255, 0.28)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
           boxShadow: 'none',
-          borderBottom: '1px solid #E5E7EB',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.5)',
+        },
+      },
+    },
+
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          minHeight: '100vh',
+          margin: 0,
+          padding: 0,
+          backgroundImage: `url('/assets/gradiant.svg')`,
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+          position: 'relative',
+          WebkitFontSmoothing: 'antialiased',
+          MozOsxFontSmoothing: 'grayscale',
+        },
+
+        '#root': {
+          minHeight: '100vh',
         },
       },
     },

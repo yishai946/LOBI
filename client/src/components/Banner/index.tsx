@@ -13,11 +13,29 @@ const Banner = ({ title, subtitle, isLoading = false }: BannerProps) =>
     <BannerSkeleton />
   ) : (
     <BannerContainer>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: subtitle ? 1 : 0 }}>
+      <Typography
+        variant="h5"
+        sx={{
+          fontWeight: 700,
+          mb: subtitle ? 1 : 0,
+          color: 'text.primary',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
         {title}
       </Typography>
       {subtitle && (
-        <Typography variant="body1" sx={{ opacity: 0.85, fontStyle: 'italic' }}>
+        <Typography
+          variant="body1"
+          sx={{
+            opacity: 0.75,
+            fontStyle: 'italic',
+            color: 'text.primary',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
           {subtitle}
         </Typography>
       )}
