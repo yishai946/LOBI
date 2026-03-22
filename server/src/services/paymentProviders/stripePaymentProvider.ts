@@ -80,7 +80,9 @@ export class StripePaymentProvider implements PaymentProvider {
       const session = event.data.object as Stripe.Checkout.Session;
 
       return {
+        id: event.id,
         type: event.type,
+        createdAt: new Date(event.created * 1000),
         session: {
           id: session.id,
           metadata: session.metadata ?? {},
@@ -104,7 +106,9 @@ export class StripePaymentProvider implements PaymentProvider {
       };
 
       return {
+        id: event.id,
         type: event.type,
+        createdAt: new Date(event.created * 1000),
         recurringCharge: {
           id: invoice.id,
           subscriptionId:
@@ -125,7 +129,9 @@ export class StripePaymentProvider implements PaymentProvider {
       const subscription = event.data.object as Stripe.Subscription;
 
       return {
+        id: event.id,
         type: event.type,
+        createdAt: new Date(event.created * 1000),
         subscription: {
           id: subscription.id,
           customerId:
@@ -137,7 +143,11 @@ export class StripePaymentProvider implements PaymentProvider {
       };
     }
 
-    return { type: event.type };
+    return {
+      id: event.id,
+      type: event.type,
+      createdAt: new Date(event.created * 1000),
+    };
   }
 
   async getSessionSnapshot(

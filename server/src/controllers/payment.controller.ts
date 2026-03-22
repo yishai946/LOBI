@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as paymentService from "../services/payment.service";
+import * as webhookReconciliationService from "../services/webhook-reconciliation.service";
 import { HttpError } from "../utils/HttpError";
 import {
   parseEnumQueryParam,
@@ -200,61 +201,122 @@ export const createPayAllCheckoutSession = async (
 };
 
 export const paymentWebhook = async (req: Request, res: Response) => {
+  const startTime = Date.now();
   const signatureHeader = paymentService.getPaymentWebhookSignatureHeader();
   const signature = req.headers[signatureHeader];
+
+  const rawPayload = Buffer.isBuffer(req.body)
+    ? req.body
+    : Buffer.from(
+        typeof req.body === "string"
+          ? req.body
+          : JSON.stringify(req.body || {}),
+      );
 
   if (!signature || Array.isArray(signature)) {
     throw new HttpError("חתימת Stripe חסרה", 400);
   }
 
   const event = paymentService.constructPaymentWebhookEvent(
-    req.body,
+    rawPayload,
     signature,
   );
 
-  if (event.type === "checkout.session.completed" && "session" in event) {
-    const session = event.session;
+  // Record metric for received webhook
+  await webhookReconciliationService.recordWebhookMetric(
+    "stripe",
+    event.type,
+    "received",
+  );
 
-    const assignmentIds = session.metadata?.assignmentIds;
+  paymentService.assertPaymentWebhookReplayWindow(event.createdAt);
+  const payloadHash = paymentService.hashWebhookPayload(rawPayload);
 
-    if (session.metadata?.payAll === "true" && assignmentIds) {
-      await paymentService.markAssignmentsPaid(
-        assignmentIds.split(",").filter(Boolean),
-        session.metadata?.userId,
-      );
-    } else {
-      await paymentService.markAssignmentPaid(
-        session.id,
-        session.metadata?.userId,
+  const acquired = await paymentService.acquirePaymentWebhookEvent(
+    event.id,
+    event.type,
+    payloadHash,
+  );
+
+  if (!acquired.shouldProcess) {
+    res.json({ received: true });
+    return;
+  }
+
+  try {
+    if (event.type === "checkout.session.completed" && "session" in event) {
+      const session = event.session;
+
+      const assignmentIds = session.metadata?.assignmentIds;
+
+      if (session.metadata?.payAll === "true" && assignmentIds) {
+        await paymentService.markAssignmentsPaid(
+          assignmentIds.split(",").filter(Boolean),
+          session.metadata?.userId,
+        );
+      } else {
+        await paymentService.markAssignmentPaid(
+          session.id,
+          session.metadata?.userId,
+        );
+      }
+
+      await paymentService.activateRecurringEnrollmentFromCheckout(session);
+    }
+
+    if (
+      event.type === "invoice.payment_succeeded" &&
+      "recurringCharge" in event
+    ) {
+      await paymentService.handleRecurringChargeSucceeded(
+        event.recurringCharge,
       );
     }
 
-    await paymentService.activateRecurringEnrollmentFromCheckout(session);
-  }
-
-  if (
-    event.type === "invoice.payment_succeeded" &&
-    "recurringCharge" in event
-  ) {
-    await paymentService.handleRecurringChargeSucceeded(event.recurringCharge);
-  }
-
-  if (event.type === "invoice.payment_failed" && "recurringCharge" in event) {
-    await paymentService.handleRecurringChargeFailed(event.recurringCharge);
-  }
-
-  if (
-    event.type === "customer.subscription.updated" ||
-    event.type === "customer.subscription.deleted"
-  ) {
-    if (!("subscription" in event)) {
-      res.json({ received: true });
-      return;
+    if (event.type === "invoice.payment_failed" && "recurringCharge" in event) {
+      await paymentService.handleRecurringChargeFailed(event.recurringCharge);
     }
 
-    await paymentService.syncRecurringEnrollmentSubscriptionState(
-      event.subscription,
+    if (
+      event.type === "customer.subscription.updated" ||
+      event.type === "customer.subscription.deleted"
+    ) {
+      if (!("subscription" in event)) {
+        await paymentService.completePaymentWebhookEvent(event.id);
+        const processingTimeMs = Date.now() - startTime;
+        await webhookReconciliationService.recordWebhookMetric(
+          "stripe",
+          event.type,
+          "succeeded",
+          processingTimeMs,
+        );
+        res.json({ received: true });
+        return;
+      }
+
+      await paymentService.syncRecurringEnrollmentSubscriptionState(
+        event.subscription,
+      );
+    }
+
+    await paymentService.completePaymentWebhookEvent(event.id);
+    const processingTimeMs = Date.now() - startTime;
+    await webhookReconciliationService.recordWebhookMetric(
+      "stripe",
+      event.type,
+      "succeeded",
+      processingTimeMs,
     );
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Webhook processing failed";
+    await paymentService.failPaymentWebhookEvent(event.id, message);
+    await webhookReconciliationService.recordWebhookMetric(
+      "stripe",
+      event.type,
+      "failed",
+    );
+    throw error;
   }
 
   res.json({ received: true });

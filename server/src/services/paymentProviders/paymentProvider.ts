@@ -33,26 +33,32 @@ export interface ProviderRecurringChargeSnapshot {
   occurredAt?: Date;
 }
 
+interface ProviderWebhookEventBase {
+  id: string;
+  type: string;
+  createdAt?: Date;
+}
+
 export type ProviderWebhookEvent =
-  | {
+  | (ProviderWebhookEventBase & {
       type: "checkout.session.completed";
       session: ProviderSessionSnapshot;
-    }
-  | {
+    })
+  | (ProviderWebhookEventBase & {
       type: "invoice.payment_succeeded" | "invoice.payment_failed";
       recurringCharge: ProviderRecurringChargeSnapshot;
-    }
-  | {
+    })
+  | (ProviderWebhookEventBase & {
       type: "customer.subscription.updated" | "customer.subscription.deleted";
       subscription: {
         id: string;
         customerId?: string;
         status?: string;
       };
-    }
-  | {
+    })
+  | (ProviderWebhookEventBase & {
       type: string;
-    };
+    });
 
 export interface PaymentProvider {
   readonly name: string;

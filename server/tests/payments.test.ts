@@ -10,6 +10,7 @@ import crypto from "crypto";
 (globalThis as any).__mockStripeUserId = "user_1";
 (globalThis as any).__mockStripeSessionId = "cs_test_123";
 (globalThis as any).__mockStripeEventType = "checkout.session.completed";
+(globalThis as any).__mockStripeEventId = `evt_test_${crypto.randomUUID()}`;
 (globalThis as any).__mockStripeConstructEventError = null;
 (globalThis as any).__mockStripeSessionMetadata = null;
 (globalThis as any).__mockStripeSubscriptionId = null;
@@ -35,6 +36,9 @@ jest.mock("stripe", () => {
         }
 
         return {
+          id:
+            (globalThis as any).__mockStripeEventId ||
+            `evt_test_${crypto.randomUUID()}`,
           type:
             (globalThis as any).__mockStripeEventType ||
             "checkout.session.completed",
@@ -88,6 +92,7 @@ describe("Payment routes", () => {
     (globalThis as any).__mockStripeUserId = "user_1";
     (globalThis as any).__mockStripeSessionId = "cs_test_123";
     (globalThis as any).__mockStripeEventType = "checkout.session.completed";
+    (globalThis as any).__mockStripeEventId = `evt_test_${crypto.randomUUID()}`;
     (globalThis as any).__mockStripeConstructEventError = null;
     (globalThis as any).__mockStripeSessionMetadata = null;
     (globalThis as any).__mockStripeSubscriptionId = null;
@@ -966,6 +971,64 @@ describe("Payment routes", () => {
       where: { id: assignment.id },
     });
     expect(updated?.status).toBe("PAID");
+
+    const events = await prisma.paymentWebhookEvent.findMany({
+      where: {
+        provider: "stripe",
+        eventId: (globalThis as any).__mockStripeEventId,
+      },
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0]?.status).toBe("PROCESSED");
+    expect(events[0]?.deliveryCount).toBe(2);
+  });
+
+  it("webhook rejects duplicate event id with different payload hash", async () => {
+    const { managerUser, building, apartment } = await createBasicContext();
+    (globalThis as any).__mockStripeUserId = managerUser.id;
+
+    const payment = await createPayment(building.id);
+    const sessionId = `cs_test_${crypto.randomUUID()}`;
+    (globalThis as any).__mockStripeSessionId = sessionId;
+    (globalThis as any).__mockStripeEventId = `evt_test_${crypto.randomUUID()}`;
+    const assignment = await prisma.paymentAssignment.create({
+      data: {
+        paymentId: payment.id,
+        apartmentId: apartment.id,
+        status: "PENDING",
+      },
+    });
+
+    await prisma.paymentAssignment.update({
+      where: { id: assignment.id },
+      data: { stripeSessionId: sessionId },
+    });
+
+    const first = await request(app)
+      .post("/api/payments/webhook")
+      .set("stripe-signature", "test")
+      .set("Content-Type", "application/json")
+      .send('{"baseline":true}');
+
+    const second = await request(app)
+      .post("/api/payments/webhook")
+      .set("stripe-signature", "test")
+      .set("Content-Type", "application/json")
+      .send('{"baseline":false,"tampered":true}');
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(400);
+
+    const events = await prisma.paymentWebhookEvent.findMany({
+      where: {
+        provider: "stripe",
+        eventId: (globalThis as any).__mockStripeEventId,
+      },
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.status).toBe("PROCESSED");
+    expect(events[0]?.deliveryCount).toBe(1);
   });
 
   it("webhook handles malformed payload safely", async () => {

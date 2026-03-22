@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma";
 import { HttpError } from "../utils/HttpError";
+import crypto from "crypto";
 import {
   CheckoutPaymentCommand,
   CreateRecurringSeriesCommand,
@@ -13,6 +14,7 @@ import {
   PaymentStatus,
   RecurringEnrollmentStatus,
   RecurringSeriesStatus,
+  WebhookEventStatus,
 } from "../../generated/prisma/enums";
 import { Prisma } from "../../generated/prisma/client";
 import { SessionType } from "../enums/sessionType.enum";
@@ -157,6 +159,155 @@ export const constructPaymentWebhookEvent = (
   signature: string,
 ) => {
   return paymentProvider.constructWebhookEvent(payload, signature);
+};
+
+const DEFAULT_REPLAY_WINDOW_MINUTES = 60 * 24 * 7;
+
+export const hashWebhookPayload = (payload: Buffer) =>
+  crypto.createHash("sha256").update(payload).digest("hex");
+
+export const assertPaymentWebhookReplayWindow = (eventCreatedAt?: Date) => {
+  if (!eventCreatedAt) {
+    return;
+  }
+
+  const configuredWindowMinutes = Number(
+    process.env.PAYMENT_WEBHOOK_REPLAY_WINDOW_MINUTES ||
+      DEFAULT_REPLAY_WINDOW_MINUTES,
+  );
+
+  if (
+    !Number.isFinite(configuredWindowMinutes) ||
+    configuredWindowMinutes <= 0
+  ) {
+    return;
+  }
+
+  const ageMs = Date.now() - eventCreatedAt.getTime();
+  const maxAgeMs = configuredWindowMinutes * 60 * 1000;
+
+  if (ageMs > maxAgeMs) {
+    throw new HttpError("אירוע webhook ישן מדי", 400);
+  }
+};
+
+export const acquirePaymentWebhookEvent = async (
+  eventId: string,
+  eventType: string,
+  payloadHash: string,
+) => {
+  const provider = paymentProvider.name;
+  const now = new Date();
+
+  try {
+    await prisma.paymentWebhookEvent.create({
+      data: {
+        provider,
+        eventId,
+        eventType,
+        payloadHash,
+        lastSeenAt: now,
+        status: WebhookEventStatus.PROCESSING,
+      },
+    });
+
+    return { shouldProcess: true as const };
+  } catch (error) {
+    if (
+      !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+      error.code !== "P2002"
+    ) {
+      throw error;
+    }
+  }
+
+  const existing = await prisma.paymentWebhookEvent.findUnique({
+    where: {
+      provider_eventId: {
+        provider,
+        eventId,
+      },
+    },
+  });
+
+  if (!existing) {
+    return { shouldProcess: false as const };
+  }
+
+  if (existing.payloadHash && existing.payloadHash !== payloadHash) {
+    throw new HttpError("זוהתה אי-התאמה במטען אירוע webhook", 400);
+  }
+
+  await prisma.paymentWebhookEvent.update({
+    where: { id: existing.id },
+    data: {
+      deliveryCount: {
+        increment: 1,
+      },
+      lastSeenAt: now,
+      payloadHash: existing.payloadHash || payloadHash,
+    },
+  });
+
+  if (
+    existing.status === WebhookEventStatus.PROCESSED ||
+    existing.status === WebhookEventStatus.PROCESSING
+  ) {
+    return { shouldProcess: false as const };
+  }
+
+  const claimResult = await prisma.paymentWebhookEvent.updateMany({
+    where: {
+      id: existing.id,
+      status: WebhookEventStatus.FAILED,
+    },
+    data: {
+      status: WebhookEventStatus.PROCESSING,
+      eventType,
+      payloadHash,
+      errorMessage: null,
+      processedAt: null,
+      receivedAt: now,
+      lastSeenAt: now,
+    },
+  });
+
+  return {
+    shouldProcess: claimResult.count === 1,
+  } as const;
+};
+
+export const completePaymentWebhookEvent = async (eventId: string) => {
+  await prisma.paymentWebhookEvent.updateMany({
+    where: {
+      provider: paymentProvider.name,
+      eventId,
+      status: WebhookEventStatus.PROCESSING,
+    },
+    data: {
+      status: WebhookEventStatus.PROCESSED,
+      processedAt: new Date(),
+      errorMessage: null,
+    },
+  });
+};
+
+export const failPaymentWebhookEvent = async (
+  eventId: string,
+  errorMessage: string,
+) => {
+  await prisma.paymentWebhookEvent.updateMany({
+    where: {
+      provider: paymentProvider.name,
+      eventId,
+      status: WebhookEventStatus.PROCESSING,
+    },
+    data: {
+      status: WebhookEventStatus.FAILED,
+      processedAt: new Date(),
+      errorMessage,
+    },
+  });
 };
 
 const resolveBuildingId = (
