@@ -39,6 +39,7 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
 
   const amountText = formatAmount(item.payment.amount, item.payment.currency || 'ILS');
   const descriptionText = item.payment.description?.trim() || '';
+  const isRecurring = Boolean(item.payment.isRecurring);
   const dueDateText = formatDate(item.payment.dueAt);
   const paidDateText = formatDate(item.paidAt);
   const statusDateText = isPending
@@ -65,8 +66,6 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
     window.open(receiptUrl, '_blank', 'noopener,noreferrer');
   };
 
-  console.log(item.payment.description + " " + item.stripeSessionId);
-
   return (
     <Card isError={isOverdue}>
       <Row sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
@@ -89,18 +88,32 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
             <CreditCardIcon sx={{ fontSize: 18 }} />
           </Box>
         </Row>
-        {isOverdue && (
-          <Chip
-            label="יש חוב"
-            size="small"
-            sx={{
-              bgcolor: 'error.light',
-              color: 'error.main',
-              fontWeight: 700,
-              borderRadius: 3,
-            }}
-          />
-        )}
+        <Row sx={{ alignItems: 'center', gap: 1 }}>
+          {isRecurring && (
+            <Chip
+              label="חיוב חודשי"
+              size="small"
+              sx={{
+                bgcolor: 'success.light',
+                color: 'success.main',
+                fontWeight: 700,
+                borderRadius: 3,
+              }}
+            />
+          )}
+          {isOverdue && (
+            <Chip
+              label="יש חוב"
+              size="small"
+              sx={{
+                bgcolor: 'error.light',
+                color: 'error.main',
+                fontWeight: 700,
+                borderRadius: 3,
+              }}
+            />
+          )}
+        </Row>
       </Row>
       {descriptionText && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>

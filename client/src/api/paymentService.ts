@@ -11,6 +11,34 @@ export interface PaymentQueryParams extends PaginationParams {
   filter?: PaymentFilterParam;
 }
 
+export type RecurringSeriesStatus = 'ACTIVE' | 'PAUSED' | 'ENDED';
+export type RecurringEnrollmentStatus = 'ACTIVE' | 'PAUSED' | 'CANCELED';
+
+export interface RecurringEnrollment {
+  id: string;
+  seriesId: string;
+  apartmentId: string;
+  residentId: string | null;
+  status: RecurringEnrollmentStatus;
+  autoPayEnabledAt: string | null;
+  nextBillingAt: string | null;
+  lastChargedAt: string | null;
+}
+
+export interface RecurringSeries {
+  id: string;
+  title: string;
+  description: string | null;
+  amount: number;
+  currency: string;
+  status: RecurringSeriesStatus;
+  cadence: 'MONTHLY';
+  anchorDay: number;
+  startsAt: string;
+  endsAt: string | null;
+  enrollments: RecurringEnrollment[];
+}
+
 const buildApiUrl = (path: string) => {
   const baseUrl = (import.meta.env.VITE_API_URL as string).replace(/\/$/, '');
   return `${baseUrl}${path}`;
@@ -37,6 +65,25 @@ export const paymentService = {
     assignmentsCount: number;
   }> => {
     const response = await axiosInstance.post('/payments/my/checkout-all', {});
+    return response.data;
+  },
+
+  getMyRecurringSeries: async (): Promise<RecurringSeries[]> => {
+    const response = await axiosInstance.get('/payments/my/recurring-series');
+    return response.data;
+  },
+
+  setMyRecurringEnrollment: async (
+    seriesId: string,
+    enabled: boolean
+  ): Promise<{ message: string; enrollment: RecurringEnrollment }> => {
+    const response = await axiosInstance.post(
+      `/payments/my/recurring-series/${seriesId}/enrollment`,
+      {
+        enabled,
+      }
+    );
+
     return response.data;
   },
 

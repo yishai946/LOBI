@@ -1,8 +1,9 @@
-import { PaymentFilterParam, paymentService } from '@api/paymentService';
+import { PaymentFilterParam, RecurringSeries, paymentService } from '@api/paymentService';
 import Banner from '@components/Banner';
 import { PaymentAssignmentCard } from '@components/Cards/PaymentAssignmentCard';
 import { CardList, Column } from '@components/containers';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { Box, Button, Chip, Divider, Typography } from '@mui/material';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 
 const formatCurrency = (amount: number, currency: string): string =>
@@ -13,6 +14,7 @@ const formatCurrency = (amount: number, currency: string): string =>
   }).format(amount);
 
 export const PaymentsPage = () => {
+  const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<PaymentFilterParam>('all');
   const [activeSort, setActiveSort] = useState('dueDesc');
   const [activePage, setActivePage] = useState(1);
@@ -40,12 +42,27 @@ export const PaymentsPage = () => {
       }),
   });
 
+  const { data: recurringSeries = [], isLoading: isRecurringSeriesLoading } = useQuery({
+    queryKey: ['payments', 'my', 'recurring-series'],
+    queryFn: () => paymentService.getMyRecurringSeries(),
+  });
+
   const { mutate: payAllNow, isPending: isRedirectingToCheckout } = useMutation({
     mutationFn: () => paymentService.createPayAllCheckoutSession(),
     onSuccess: (result) => {
       window.location.href = result.checkoutUrl;
     },
   });
+
+  const { mutate: setEnrollment, isPending: isUpdatingEnrollment } = useMutation({
+    mutationFn: ({ seriesId, enabled }: { seriesId: string; enabled: boolean }) =>
+      paymentService.setMyRecurringEnrollment(seriesId, enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', 'my', 'recurring-series'] });
+    },
+  });
+
+  const getEnrollment = (series: RecurringSeries) => series.enrollments?.[0] || null;
 
   const totalPendingAmount = useMemo(
     () =>
@@ -64,6 +81,96 @@ export const PaymentsPage = () => {
 
   return (
     <Column>
+      <Column
+        sx={{
+          mb: 2,
+          p: 2,
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          gap: 1.5,
+        }}
+      >
+        <Typography variant="h6" sx={{ fontWeight: 800 }}>
+          תשלומים קבועים
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          הפעל חיוב אוטומטי פעם אחת, והמערכת תטפל בהמשך התשלומים החודשיים עבורך.
+        </Typography>
+
+        {isRecurringSeriesLoading ? (
+          <Typography variant="body2" color="text.secondary">
+            טוען סדרות חיוב...
+          </Typography>
+        ) : recurringSeries.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            אין כרגע סדרות חיוב קבועות זמינות עבורך.
+          </Typography>
+        ) : (
+          <Column sx={{ gap: 1 }}>
+            {recurringSeries.map((series) => {
+              const enrollment = getEnrollment(series);
+              const isActive = enrollment?.status === 'ACTIVE';
+
+              return (
+                <Box
+                  key={series.id}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.default',
+                  }}
+                >
+                  <Column sx={{ gap: 1 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 1,
+                      }}
+                    >
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        {series.title}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={isActive ? 'חיוב אוטומטי פעיל' : 'חיוב אוטומטי כבוי'}
+                        color={isActive ? 'success' : 'default'}
+                      />
+                    </Box>
+
+                    {series.description && (
+                      <Typography variant="body2" color="text.secondary">
+                        {series.description}
+                      </Typography>
+                    )}
+
+                    <Typography variant="body2" color="text.secondary">
+                      תאריך חיוב חודשי: יום {series.anchorDay}
+                    </Typography>
+
+                    <Button
+                      variant={isActive ? 'outlined' : 'contained'}
+                      onClick={() => setEnrollment({ seriesId: series.id, enabled: !isActive })}
+                      disabled={isUpdatingEnrollment || series.status === 'ENDED'}
+                      sx={{ alignSelf: 'flex-start' }}
+                    >
+                      {isActive ? 'כבה חיוב אוטומטי' : 'הפעל חיוב אוטומטי'}
+                    </Button>
+                  </Column>
+                </Box>
+              );
+            })}
+          </Column>
+        )}
+      </Column>
+
+      <Divider sx={{ mb: 2 }} />
+
       <Banner
         title={formattedTotalPendingAmount}
         subtitle='סה"כ הכל לתשלום'

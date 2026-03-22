@@ -33,6 +33,60 @@ export const createPayment = async (req: Request, res: Response) => {
   });
 };
 
+export const createRecurringSeries = async (req: Request, res: Response) => {
+  const result = await paymentService.createRecurringSeries(req.user, req.body);
+
+  return res.status(201).json({
+    message: "Recurring payment series created successfully",
+    series: result.series,
+  });
+};
+
+export const getRecurringSeriesForManager = async (
+  req: Request,
+  res: Response,
+) => {
+  const buildingId = req.query.buildingId as string | undefined;
+  const series = await paymentService.getRecurringSeriesForManager(
+    req.user,
+    buildingId,
+  );
+
+  res.json(series);
+};
+
+export const updateRecurringSeries = async (req: Request, res: Response) => {
+  const series = await paymentService.updateRecurringSeries(
+    req.user,
+    req.params.seriesId as string,
+    req.body,
+  );
+
+  res.json({
+    message: "Recurring payment series updated successfully",
+    series,
+  });
+};
+
+export const getMyRecurringSeries = async (req: Request, res: Response) => {
+  const series = await paymentService.getMyRecurringSeries(req.user);
+
+  res.json(series);
+};
+
+export const setMyRecurringEnrollment = async (req: Request, res: Response) => {
+  const enrollment = await paymentService.setMyRecurringEnrollment(
+    req.user,
+    req.params.seriesId as string,
+    req.body,
+  );
+
+  res.json({
+    message: "Recurring enrollment updated successfully",
+    enrollment,
+  });
+};
+
 export const getPayments = async (req: Request, res: Response) => {
   const buildingId = req.query.buildingId as string | undefined;
   const pagination = parsePaginationQuery(req.query);
@@ -158,12 +212,8 @@ export const paymentWebhook = async (req: Request, res: Response) => {
     signature,
   );
 
-  if (event.type === "checkout.session.completed") {
+  if (event.type === "checkout.session.completed" && "session" in event) {
     const session = event.session;
-
-    if (!session) {
-      throw new HttpError("אירוע תשלום חסר פרטי session", 400);
-    }
 
     const assignmentIds = session.metadata?.assignmentIds;
 
@@ -178,6 +228,33 @@ export const paymentWebhook = async (req: Request, res: Response) => {
         session.metadata?.userId,
       );
     }
+
+    await paymentService.activateRecurringEnrollmentFromCheckout(session);
+  }
+
+  if (
+    event.type === "invoice.payment_succeeded" &&
+    "recurringCharge" in event
+  ) {
+    await paymentService.handleRecurringChargeSucceeded(event.recurringCharge);
+  }
+
+  if (event.type === "invoice.payment_failed" && "recurringCharge" in event) {
+    await paymentService.handleRecurringChargeFailed(event.recurringCharge);
+  }
+
+  if (
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.deleted"
+  ) {
+    if (!("subscription" in event)) {
+      res.json({ received: true });
+      return;
+    }
+
+    await paymentService.syncRecurringEnrollmentSubscriptionState(
+      event.subscription,
+    );
   }
 
   res.json({ received: true });

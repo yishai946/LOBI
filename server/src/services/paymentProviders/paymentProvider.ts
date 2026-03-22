@@ -22,12 +22,37 @@ export interface ProviderCheckoutSession {
 export interface ProviderSessionSnapshot {
   id: string;
   metadata: Record<string, string>;
+  subscriptionId?: string;
+  customerId?: string;
 }
 
-export interface ProviderWebhookEvent {
-  type: string;
-  session?: ProviderSessionSnapshot;
+export interface ProviderRecurringChargeSnapshot {
+  id: string;
+  subscriptionId?: string;
+  customerId?: string;
+  occurredAt?: Date;
 }
+
+export type ProviderWebhookEvent =
+  | {
+      type: "checkout.session.completed";
+      session: ProviderSessionSnapshot;
+    }
+  | {
+      type: "invoice.payment_succeeded" | "invoice.payment_failed";
+      recurringCharge: ProviderRecurringChargeSnapshot;
+    }
+  | {
+      type: "customer.subscription.updated" | "customer.subscription.deleted";
+      subscription: {
+        id: string;
+        customerId?: string;
+        status?: string;
+      };
+    }
+  | {
+      type: string;
+    };
 
 export interface PaymentProvider {
   readonly name: string;

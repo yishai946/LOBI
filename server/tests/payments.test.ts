@@ -11,6 +11,11 @@ import crypto from "crypto";
 (globalThis as any).__mockStripeSessionId = "cs_test_123";
 (globalThis as any).__mockStripeEventType = "checkout.session.completed";
 (globalThis as any).__mockStripeConstructEventError = null;
+(globalThis as any).__mockStripeSessionMetadata = null;
+(globalThis as any).__mockStripeSubscriptionId = null;
+(globalThis as any).__mockStripeCustomerId = null;
+(globalThis as any).__mockStripeInvoiceSubscriptionId = null;
+(globalThis as any).__mockStripeInvoiceCustomerId = null;
 
 jest.mock("stripe", () => {
   return jest.fn().mockImplementation(() => ({
@@ -34,12 +39,39 @@ jest.mock("stripe", () => {
             (globalThis as any).__mockStripeEventType ||
             "checkout.session.completed",
           data: {
-            object: {
-              id: (globalThis as any).__mockStripeSessionId || "cs_test_123",
-              metadata: {
-                userId: (globalThis as any).__mockStripeUserId || "user_1",
-              },
-            },
+            object:
+              (globalThis as any).__mockStripeEventType ===
+                "invoice.payment_succeeded" ||
+              (globalThis as any).__mockStripeEventType ===
+                "invoice.payment_failed"
+                ? {
+                    id: `in_${crypto.randomUUID()}`,
+                    customer:
+                      (globalThis as any).__mockStripeInvoiceCustomerId ||
+                      (globalThis as any).__mockStripeCustomerId ||
+                      "cus_test_123",
+                    subscription:
+                      (globalThis as any).__mockStripeInvoiceSubscriptionId ||
+                      (globalThis as any).__mockStripeSubscriptionId ||
+                      "sub_test_123",
+                    created: Math.floor(Date.now() / 1000),
+                  }
+                : {
+                    id:
+                      (globalThis as any).__mockStripeSessionId ||
+                      "cs_test_123",
+                    metadata: (globalThis as any)
+                      .__mockStripeSessionMetadata || {
+                      userId:
+                        (globalThis as any).__mockStripeUserId || "user_1",
+                    },
+                    customer:
+                      (globalThis as any).__mockStripeCustomerId ||
+                      "cus_test_123",
+                    subscription:
+                      (globalThis as any).__mockStripeSubscriptionId ||
+                      undefined,
+                  },
           },
         };
       }),
@@ -57,6 +89,11 @@ describe("Payment routes", () => {
     (globalThis as any).__mockStripeSessionId = "cs_test_123";
     (globalThis as any).__mockStripeEventType = "checkout.session.completed";
     (globalThis as any).__mockStripeConstructEventError = null;
+    (globalThis as any).__mockStripeSessionMetadata = null;
+    (globalThis as any).__mockStripeSubscriptionId = null;
+    (globalThis as any).__mockStripeCustomerId = null;
+    (globalThis as any).__mockStripeInvoiceSubscriptionId = null;
+    (globalThis as any).__mockStripeInvoiceCustomerId = null;
   });
 
   const uniquePhone = () =>
@@ -157,6 +194,75 @@ describe("Payment routes", () => {
       });
 
     expect(res.status).toBe(400);
+  });
+
+  it("manager can create recurring payment series", async () => {
+    const { managerUser, building } = await createBasicContext();
+    const token = signToken({
+      userId: managerUser.id,
+      sessionType: SessionType.MANAGER,
+      buildingId: building.id,
+    });
+
+    const res = await request(app)
+      .post("/api/payments/recurring-series")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        title: "Recurring Committee Fee",
+        description: "Monthly recurring fee",
+        amount: 150,
+        buildingId: building.id,
+        cadence: "MONTHLY",
+        anchorDay: 10,
+        createInitialPayment: true,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.series?.id).toBeDefined();
+
+    const linkedPayment = await prisma.payment.findFirst({
+      where: { recurringSeriesId: res.body.series.id },
+    });
+    expect(linkedPayment).toBeTruthy();
+  });
+
+  it("resident can enable recurring enrollment", async () => {
+    const { managerUser, residentUser, building, apartment } =
+      await createBasicContext();
+    const managerToken = signToken({
+      userId: managerUser.id,
+      sessionType: SessionType.MANAGER,
+      buildingId: building.id,
+    });
+
+    const createSeriesRes = await request(app)
+      .post("/api/payments/recurring-series")
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({
+        title: "Recurring Maintenance",
+        amount: 120,
+        buildingId: building.id,
+        cadence: "MONTHLY",
+        anchorDay: 5,
+        createInitialPayment: false,
+      });
+
+    const residentToken = signToken({
+      userId: residentUser.id,
+      sessionType: SessionType.RESIDENT,
+      buildingId: building.id,
+      apartmentId: apartment.id,
+    });
+
+    const enrollRes = await request(app)
+      .post(
+        `/api/payments/my/recurring-series/${createSeriesRes.body.series.id}/enrollment`,
+      )
+      .set("Authorization", `Bearer ${residentToken}`)
+      .send({ enabled: true });
+
+    expect(enrollRes.status).toBe(200);
+    expect(enrollRes.body.enrollment?.status).toBe("ACTIVE");
   });
 
   it("resident can create checkout session", async () => {
@@ -693,6 +799,82 @@ describe("Payment routes", () => {
       where: { id: assignment.id },
     });
     expect(updated?.status).toBe("PAID");
+  });
+
+  it("webhook checkout completed activates recurring enrollment", async () => {
+    const { managerUser, residentUser, building, apartment } =
+      await createBasicContext();
+    const managerToken = signToken({
+      userId: managerUser.id,
+      sessionType: SessionType.MANAGER,
+      buildingId: building.id,
+    });
+
+    const createSeriesRes = await request(app)
+      .post("/api/payments/recurring-series")
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({
+        title: "Recurring Building Fee",
+        amount: 90,
+        buildingId: building.id,
+        cadence: "MONTHLY",
+        anchorDay: 12,
+        createInitialPayment: true,
+      });
+
+    const seriesId = createSeriesRes.body.series.id;
+    const payment = await prisma.payment.findFirstOrThrow({
+      where: { recurringSeriesId: seriesId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const assignment = await prisma.paymentAssignment.findFirstOrThrow({
+      where: {
+        paymentId: payment.id,
+        apartmentId: apartment.id,
+      },
+    });
+
+    const sessionId = `cs_test_${crypto.randomUUID()}`;
+    const subscriptionId = `sub_test_${crypto.randomUUID()}`;
+    const customerId = `cus_test_${crypto.randomUUID()}`;
+
+    (globalThis as any).__mockStripeSessionId = sessionId;
+    (globalThis as any).__mockStripeSubscriptionId = subscriptionId;
+    (globalThis as any).__mockStripeCustomerId = customerId;
+    (globalThis as any).__mockStripeSessionMetadata = {
+      assignmentId: assignment.id,
+      userId: residentUser.id,
+      recurringSeriesId: seriesId,
+      apartmentId: apartment.id,
+      requestRecurring: "true",
+    };
+
+    await prisma.paymentAssignment.update({
+      where: { id: assignment.id },
+      data: { stripeSessionId: sessionId },
+    });
+
+    const res = await request(app)
+      .post("/api/payments/webhook")
+      .set("stripe-signature", "test")
+      .send(Buffer.from(JSON.stringify({})));
+
+    expect(res.status).toBe(200);
+
+    const enrollment = await prisma.recurringPaymentEnrollment.findUnique({
+      where: {
+        seriesId_apartmentId: {
+          seriesId,
+          apartmentId: apartment.id,
+        },
+      },
+    });
+
+    expect(enrollment).toBeTruthy();
+    expect(enrollment?.status).toBe("ACTIVE");
+    expect(enrollment?.providerSubscriptionId).toBe(subscriptionId);
+    expect(enrollment?.providerCustomerId).toBe(customerId);
   });
 
   it("webhook rejects missing stripe signature", async () => {

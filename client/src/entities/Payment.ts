@@ -5,5 +5,7 @@ export interface Payment {
   amount: number;
   currency: string;
   dueAt: string;
+  isRecurring: boolean;
+  recurringSeriesId: string | null;
   createdAt: string;
 }
