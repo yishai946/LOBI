@@ -143,37 +143,12 @@ export const ContextSelectionPage = () => {
         minHeight: '100vh',
         width: '100%',
         mx: 'auto',
-        bgcolor: '#F5F7FB',
         overflowX: 'hidden',
       }}
     >
-      <Row
-        sx={{
-          alignItems: 'center',
-          px: 2,
-          py: 1.75,
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          bgcolor: 'background.paper',
-          boxShadow: '0 1px 0 rgba(17, 24, 39, 0.08)',
-        }}
-      >
-        <Box sx={{ width: 40 }} />
-        <Typography
-          variant="h6"
-          sx={{
-            flex: 1,
-            textAlign: 'center',
-            fontWeight: 800,
-            fontSize: 24,
-            letterSpacing: '-0.02em',
-            color: 'text.primary',
-          }}
-        >
-          בחר פרופיל
-        </Typography>
-      </Row>
+      <Typography variant="h5" fontWeight="bold">
+        בחר פרופיל
+      </Typography>
 
       <Column mt={2} sx={{ gap: 2, px: 1.5, pb: 3 }}>
         {error && (

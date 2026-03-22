@@ -125,15 +125,15 @@ model Issue {
 }
 
 model Payment {
-  id              String   @id @default(uuid())
-  title           String
-  description     String?
-  amount          Decimal
-  currency        String   @default("ILS")
-  dueAt           DateTime @default(now())
-  buildingId      String
-  isRecurring     Boolean  @default(false)
-  createdAt       DateTime @default(now())
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  amount      Decimal
+  currency    String   @default("ILS")
+  dueAt       DateTime @default(now())
+  buildingId  String
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   building    Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   assignments PaymentAssignment[]
@@ -146,7 +146,7 @@ model PaymentAssignment {
   paymentId       String
   apartmentId     String
   status          PaymentStatus @default(PENDING)
-  stripeSessionId String?       @unique
+  stripeSessionId String?
   paidAt          DateTime?
   paidById        String?
   createdAt       DateTime      @default(now())
@@ -158,6 +158,7 @@ model PaymentAssignment {
   @@unique([paymentId, apartmentId])
   @@index([paymentId])
   @@index([apartmentId])
+  @@index([stripeSessionId])
 }
 
 model IssueImage {

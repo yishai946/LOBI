@@ -1,4 +1,3 @@
-import Stripe from "stripe";
 import prisma from "../lib/prisma";
 import { HttpError } from "../utils/HttpError";
 import {
@@ -11,6 +10,7 @@ import { PaymentStatus } from "../../generated/prisma/enums";
 import { Prisma } from "../../generated/prisma/client";
 import { SessionType } from "../enums/sessionType.enum";
 import { PaginationOptions, SortOrder } from "../utils/pagination";
+import { getPaymentProvider } from "./paymentProviders";
 
 type PaymentFilter =
   | "all"
@@ -43,24 +43,13 @@ const resolveStatusFromFilter = (
   return undefined;
 };
 
-let stripeClient: Stripe | null = null;
+const paymentProvider = getPaymentProvider();
 
-const getStripeClient = () => {
-  if (stripeClient) {
-    return stripeClient;
-  }
+export const getPaymentWebhookSignatureHeader = () =>
+  paymentProvider.webhookSignatureHeader;
 
-  const apiKey = process.env.STRIPE_SECRET_KEY;
-  if (!apiKey) {
-    throw new HttpError(
-      "STRIPE_SECRET_KEY לא מוגדר. הוסף אותו לסביבת העבודה שלך.",
-      500,
-    );
-  }
-
-  stripeClient = new Stripe(apiKey);
-  return stripeClient;
-};
+export const getReceiptPaymentMethodLabel = () =>
+  paymentProvider.receiptPaymentMethodLabel;
 
 const DEFAULT_CURRENCY = "ILS";
 
@@ -130,12 +119,11 @@ export const createPayment = async (
   return { payment };
 };
 
-export const constructStripeEvent = (payload: Buffer, signature: string) => {
-  return getStripeClient().webhooks.constructEvent(
-    payload,
-    signature,
-    process.env.STRIPE_WEBHOOK_SECRET!,
-  );
+export const constructPaymentWebhookEvent = (
+  payload: Buffer,
+  signature: string,
+) => {
+  return paymentProvider.constructWebhookEvent(payload, signature);
 };
 
 const resolveBuildingId = (
@@ -517,34 +505,24 @@ export const createCheckoutSession = async (
   }
 
   const baseUrl = origin || "http://localhost:3000";
-  const session = await getStripeClient().checkout.sessions.create({
+  const session = await paymentProvider.createCheckoutSession({
     mode: requestedRecurring ? "subscription" : "payment",
-    payment_method_types: ["card"],
-    line_items: [
+    lineItems: [
       {
-        price_data: {
-          currency: assignment.payment.currency.toLowerCase(),
-          product_data: {
-            name: assignment.payment.title,
-            description: assignment.payment.description ?? undefined,
-          },
-          unit_amount: unitAmount,
-          ...(requestedRecurring ? { recurring: { interval: "month" } } : {}),
-        },
-        quantity: 1,
+        currency: assignment.payment.currency,
+        title: assignment.payment.title,
+        description: assignment.payment.description ?? undefined,
+        unitAmount,
+        recurringMonthly: requestedRecurring,
       },
     ],
     metadata: {
       assignmentId: assignment.id,
       userId: currentUser.userId,
     },
-    success_url: `${baseUrl}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/payments`,
+    successUrl: `${baseUrl}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${baseUrl}/payments`,
   });
-
-  if (!session.url) {
-    throw new HttpError("כתובת URL של Stripe לא זמינה", 500);
-  }
 
   await prisma.paymentAssignment.update({
     where: { id: assignment.id },
@@ -607,40 +585,47 @@ export const createPayAllCheckoutSession = async (
     }
 
     return {
-      price_data: {
-        currency: assignment.payment.currency.toLowerCase(),
-        product_data: {
-          name: assignment.payment.title,
-          description: assignment.payment.description ?? undefined,
-        },
-        unit_amount: unitAmount,
-      },
-      quantity: 1,
+      currency: assignment.payment.currency,
+      title: assignment.payment.title,
+      description: assignment.payment.description ?? undefined,
+      unitAmount,
     };
   });
 
   const baseUrl = origin || "http://localhost:3000";
-  const session = await getStripeClient().checkout.sessions.create({
+  const session = await paymentProvider.createCheckoutSession({
     mode: "payment",
-    payment_method_types: ["card"],
-    line_items: lineItems,
+    lineItems,
     metadata: {
       userId: currentUser.userId,
       payAll: "true",
       assignmentIds: assignmentIdsSerialized,
     },
-    success_url: `${baseUrl}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}`,
+    successUrl: `${baseUrl}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${baseUrl}`,
   });
 
-  if (!session.url) {
-    throw new HttpError("כתובת URL של Stripe לא זמינה", 500);
+  try {
+    await prisma.paymentAssignment.updateMany({
+      where: {
+        id: { in: assignmentIds },
+        status: PaymentStatus.PENDING,
+      },
+      data: { stripeSessionId: session.id },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      await prisma.paymentAssignment.update({
+        where: { id: assignmentIds[0] },
+        data: { stripeSessionId: session.id },
+      });
+    } else {
+      throw error;
+    }
   }
-
-  await prisma.paymentAssignment.update({
-    where: { id: assignmentIds[0] },
-    data: { stripeSessionId: session.id },
-  });
 
   return {
     checkoutUrl: session.url,
@@ -652,14 +637,32 @@ export const markAssignmentPaid = async (
   stripeSessionId: string,
   paidById?: string,
 ) => {
-  return prisma.paymentAssignment.update({
-    where: { stripeSessionId },
+  const updateResult = await prisma.paymentAssignment.updateMany({
+    where: {
+      stripeSessionId,
+      status: PaymentStatus.PENDING,
+    },
     data: {
       status: PaymentStatus.PAID,
       paidAt: new Date(),
       paidById: paidById || undefined,
     },
   });
+
+  if (updateResult.count > 0) {
+    return updateResult;
+  }
+
+  const existing = await prisma.paymentAssignment.findFirst({
+    where: { stripeSessionId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    throw new HttpError("התשלום לא נמצא", 404);
+  }
+
+  return updateResult;
 };
 
 export const markAssignmentsPaid = async (
@@ -684,8 +687,7 @@ export const markAssignmentsPaid = async (
 };
 
 export const getCustomReceiptBySessionId = async (stripeSessionId: string) => {
-  const session =
-    await getStripeClient().checkout.sessions.retrieve(stripeSessionId);
+  const session = await paymentProvider.getSessionSnapshot(stripeSessionId);
   const isPayAll = session.metadata?.payAll === "true";
   const payAllAssignmentIds = (session.metadata?.assignmentIds || "")
     .split(",")
@@ -771,7 +773,7 @@ export const getCustomReceiptBySessionId = async (stripeSessionId: string) => {
     };
   }
 
-  const assignment = await prisma.paymentAssignment.findUnique({
+  const assignment = await prisma.paymentAssignment.findFirst({
     where: { stripeSessionId },
     include: {
       payment: {

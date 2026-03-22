@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import Stripe from "stripe";
 import * as paymentService from "../services/payment.service";
 import { HttpError } from "../utils/HttpError";
 import {
@@ -147,16 +146,25 @@ export const createPayAllCheckoutSession = async (
 };
 
 export const paymentWebhook = async (req: Request, res: Response) => {
-  const signature = req.headers["stripe-signature"];
+  const signatureHeader = paymentService.getPaymentWebhookSignatureHeader();
+  const signature = req.headers[signatureHeader];
 
   if (!signature || Array.isArray(signature)) {
     throw new HttpError("חתימת Stripe חסרה", 400);
   }
 
-  const event = paymentService.constructStripeEvent(req.body, signature);
+  const event = paymentService.constructPaymentWebhookEvent(
+    req.body,
+    signature,
+  );
 
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
+    const session = event.session;
+
+    if (!session) {
+      throw new HttpError("אירוע תשלום חסר פרטי session", 400);
+    }
+
     const assignmentIds = session.metadata?.assignmentIds;
 
     if (session.metadata?.payAll === "true" && assignmentIds) {
@@ -209,7 +217,7 @@ export const getPublicReceipt = async (req: Request, res: Response) => {
     },
     {
       label: "אמצעי תשלום",
-      value: "כרטיס אשראי (Stripe)",
+      value: paymentService.getReceiptPaymentMethodLabel(),
     },
     {
       label: "אסמכתא",

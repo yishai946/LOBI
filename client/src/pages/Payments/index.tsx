@@ -14,7 +14,7 @@ const formatCurrency = (amount: number, currency: string): string =>
 
 export const PaymentsPage = () => {
   const [activeFilter, setActiveFilter] = useState<PaymentFilterParam>('all');
-  const [activeSort, setActiveSort] = useState('dueAsc');
+  const [activeSort, setActiveSort] = useState('dueDesc');
   const [activePage, setActivePage] = useState(1);
   const [activePageSize, setActivePageSize] = useState(3);
 
@@ -64,16 +64,19 @@ export const PaymentsPage = () => {
 
   return (
     <Column>
-      {(totalPendingAmount > 0 || isTotalPaymentLoading) && (
-        <Banner
-          title={formattedTotalPendingAmount}
-          subtitle='סה"כ הכל לתשלום'
-          isLoading={isTotalPaymentLoading}
-          buttonLabel="שלם עכשיו"
-          onButtonClick={payAllNow}
-          isActionLoading={isRedirectingToCheckout}
-        />
-      )}
+      <Banner
+        title={formattedTotalPendingAmount}
+        subtitle='סה"כ הכל לתשלום'
+        caption={
+          totalPendingAmount > 0
+            ? 'לחץ על כפתור "שלם עכשיו" כדי לשלם את כל התשלומים הממתינים'
+            : 'אין תשלומים ממתינים לתשלום.'
+        }
+        isLoading={isTotalPaymentLoading}
+        buttonLabel="שלם עכשיו"
+        onButtonClick={totalPendingAmount > 0 ? payAllNow : undefined}
+        isActionLoading={isRedirectingToCheckout}
+      />
 
       <CardList
         ItemComponent={PaymentAssignmentCard}

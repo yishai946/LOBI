@@ -1,15 +1,18 @@
+import { paymentService } from '@api/paymentService';
+import { Center, Column, Row } from '@components/containers';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
-import { paymentService } from '@api/paymentService';
-import { Box, Button, Paper, Stack, Typography } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { Button, Paper, Stack, Typography } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export const PaymentSuccessPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [receiptError, setReceiptError] = useState<string | null>(null);
 
   const sessionId = searchParams.get('session_id');
@@ -20,6 +23,14 @@ export const PaymentSuccessPage = () => {
 
     return `${sessionId.slice(0, 6)}...${sessionId.slice(-4)}`;
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['payments'] });
+  }, [queryClient, sessionId]);
 
   const handleReceiptDownload = () => {
     if (!sessionId) {
@@ -34,7 +45,7 @@ export const PaymentSuccessPage = () => {
   };
 
   return (
-    <Box display="flex" justifyContent="center" alignItems="center" height="100vh" p={3}>
+    <Center height="100vh" p={3}>
       <Paper
         elevation={6}
         sx={{
@@ -82,32 +93,34 @@ export const PaymentSuccessPage = () => {
             </Typography>
           )}
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ pt: 1 }}>
+          <Column spacing={1.5} sx={{ pt: 1 }}>
             <Button
-              variant="outlined"
+              variant="contained"
               startIcon={<ReceiptLongRoundedIcon />}
               onClick={handleReceiptDownload}
               disabled={!sessionId}
             >
               הורדת קבלה
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<PaymentsRoundedIcon />}
-              onClick={() => navigate('/payments')}
-            >
-              חזרה לתשלומים
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<HomeRoundedIcon />}
-              onClick={() => navigate('/home')}
-            >
-              חזרה לדף הבית
-            </Button>
-          </Stack>
+            <Row spacing={1.5} justifyContent="center">
+              <Button
+                variant="outlined"
+                startIcon={<PaymentsRoundedIcon />}
+                onClick={() => navigate('/payments')}
+              >
+                חזרה לתשלומים
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<HomeRoundedIcon />}
+                onClick={() => navigate('/home')}
+              >
+                חזרה לדף הבית
+              </Button>
+            </Row>
+          </Column>
         </Stack>
       </Paper>
-    </Box>
+    </Center>
   );
 };

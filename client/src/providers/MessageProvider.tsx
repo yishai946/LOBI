@@ -59,13 +59,13 @@ export const MessageProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <MessageContext.Provider value={contextValue}>
       {children}
-      <Snackbar open={message.open} autoHideDuration={2000} onClose={handleClose}>
-        <Alert
-          onClose={handleClose}
-          severity={message.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
+      <Snackbar
+        open={message.open}
+        autoHideDuration={2000}
+        onClose={handleClose}
+        sx={{ bottom: { xs: 90, sm: 80 } }}
+      >
+        <Alert onClose={handleClose} severity={message.severity} variant="filled">
           {message.text}
         </Alert>
       </Snackbar>

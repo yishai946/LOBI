@@ -38,6 +38,7 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
   const isOverdue = isPending && hasValidDueDate && dueAtDate.getTime() < Date.now();
 
   const amountText = formatAmount(item.payment.amount, item.payment.currency || 'ILS');
+  const descriptionText = item.payment.description?.trim() || '';
   const dueDateText = formatDate(item.payment.dueAt);
   const paidDateText = formatDate(item.paidAt);
   const statusDateText = isPending
@@ -63,6 +64,8 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
     const receiptUrl = paymentService.getReceiptDownloadUrl(item.stripeSessionId);
     window.open(receiptUrl, '_blank', 'noopener,noreferrer');
   };
+
+  console.log(item.payment.description + " " + item.stripeSessionId);
 
   return (
     <Card isError={isOverdue}>
@@ -99,6 +102,11 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
           />
         )}
       </Row>
+      {descriptionText && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          {descriptionText}
+        </Typography>
+      )}
       <Row sx={{ alignItems: 'flex-end', justifyContent: 'space-between', mb: 1 }}>
         <Column>
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
