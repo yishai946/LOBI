@@ -5,6 +5,7 @@ import {
   generateUploadUrls,
   getIssueById,
   getIssues,
+  moveIssueToPreviousStatus,
   moveIssueToNextStatus,
   updateIssue,
 } from "../controllers/issues.controller";
@@ -22,6 +23,7 @@ router.post("/", validate(createIssueSchema), createIssue);
 router.get("/", getIssues);
 router.get("/:issueId", getIssueById);
 router.patch("/:issueId", validate(updateIssueSchema), updateIssue);
+router.patch("/:issueId/prev-status", moveIssueToPreviousStatus);
 router.patch("/:issueId/next-status", moveIssueToNextStatus);
 router.delete("/:issueId", deleteIssue);
 

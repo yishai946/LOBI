@@ -1,4 +1,5 @@
 import { IssueStatus } from '@enums/IssueStatus';
+import { AxiosError } from 'axios';
 
 const HOUR_IN_MS = 60 * 60 * 1000;
 const DAY_IN_MS = 24 * HOUR_IN_MS;
@@ -93,4 +94,17 @@ export const getIssueStatusTimelineMessage = (
   }
 
   return `טופל ${getTimePassedMessage(doneAt)}`;
+};
+
+export const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof AxiosError) {
+    const message = error.response?.data?.message;
+    return typeof message === 'string' ? message : fallback;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
 };

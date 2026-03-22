@@ -12,6 +12,11 @@ const HomePage = lazy(() =>
 const IssuesPage = lazy(() =>
   import('@pages/Issues').then((module) => ({ default: module.IssuesPage }))
 );
+const IssueDetailsPage = lazy(() =>
+  import('@pages/Issues/IssueDetailsPage').then((module) => ({
+    default: module.IssueDetailsPage,
+  }))
+);
 const MessagesPage = lazy(() =>
   import('@pages/Messages').then((module) => ({ default: module.MessagesPage }))
 );
@@ -96,6 +101,20 @@ const Pages: PageDefinition[] = [
     title: 'תקלות',
     icon: <IssuesRoundedIcon />,
     isVisibleInMenu: true,
+    isProtected: true,
+    requireContext: true,
+  },
+  {
+    path: '/issues/new',
+    element: <IssuesPage />,
+    isVisibleInMenu: false,
+    isProtected: true,
+    requireContext: true,
+  },
+  {
+    path: '/issues/:issueId',
+    element: <IssueDetailsPage />,
+    isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,
   },

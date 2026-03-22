@@ -134,6 +134,25 @@ export const theme = createTheme({
       },
     },
 
+    MuiDialog: {
+      styleOverrides: {
+        root: {
+          '& .MuiBackdrop-root': {
+            backgroundColor: 'rgba(18, 13, 46, 0.18)',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+          },
+        },
+        paper: {
+          backgroundColor: 'rgba(255, 255, 255, 0.72)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.55)',
+          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.18)',
+        },
+      },
+    },
+
     MuiTextField: {
       defaultProps: {
         variant: 'outlined',

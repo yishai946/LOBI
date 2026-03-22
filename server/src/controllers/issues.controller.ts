@@ -72,6 +72,21 @@ export const moveIssueToNextStatus = async (req: Request, res: Response) => {
   });
 };
 
+export const moveIssueToPreviousStatus = async (
+  req: Request,
+  res: Response,
+) => {
+  const issue = await issuesService.moveIssueToPreviousStatus(
+    req.user,
+    req.params.issueId as string,
+  );
+
+  res.json({
+    message: "Issue status updated successfully",
+    issue,
+  });
+};
+
 export const deleteIssue = async (req: Request, res: Response) => {
   const issue = await issuesService.deleteIssue(
     req.user,

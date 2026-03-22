@@ -31,6 +31,19 @@ const getNextIssueStatus = (status: IssueStatus): IssueStatus | null => {
   }
 };
 
+const getPreviousIssueStatus = (status: IssueStatus): IssueStatus | null => {
+  switch (status) {
+    case IssueStatus.OPEN:
+      return null;
+    case IssueStatus.IN_PROGRESS:
+      return IssueStatus.OPEN;
+    case IssueStatus.DONE:
+      return IssueStatus.IN_PROGRESS;
+    default:
+      return null;
+  }
+};
+
 const buildStatusTimestamps = (
   status: IssueStatus,
   now: Date,
@@ -201,7 +214,16 @@ export const getIssues = async (
   const { status, sortByCreatedAt = "desc" } = queryOptions;
 
   const query = {
-    include: { images: true },
+    include: {
+      images: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+        },
+      },
+    },
     orderBy: { createdAt: sortByCreatedAt },
     skip,
     take: limit,
@@ -238,7 +260,16 @@ export const getIssueById = async (
 ) => {
   const issue = await prisma.issue.findUnique({
     where: { id: issueId },
-    include: { images: true },
+    include: {
+      images: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+        },
+      },
+    },
   });
 
   if (!issue) throw new HttpError("הבעיה לא נמצאה", 404);
@@ -347,6 +378,48 @@ export const moveIssueToNextStatus = async (
     where: { id: issueId },
     data: {
       status: nextStatus,
+      ...statusTimestamps,
+    },
+    include: { images: true },
+  });
+
+  return mapIssueImagesToSignedUrls(updatedIssue);
+};
+
+export const moveIssueToPreviousStatus = async (
+  currentUser: SessionPayload,
+  issueId: string,
+) => {
+  const issue = await prisma.issue.findUnique({
+    where: { id: issueId },
+    include: { images: true },
+  });
+
+  if (!issue) {
+    throw new HttpError("הבעיה לא נמצאה", 404);
+  }
+
+  if (currentUser.sessionType !== SessionType.ADMIN) {
+    if (issue.buildingId !== currentUser.buildingId) {
+      throw new HttpError("אסור", 403);
+    }
+  }
+
+  const previousStatus = getPreviousIssueStatus(issue.status as IssueStatus);
+  if (!previousStatus) {
+    throw new HttpError("התקלה כבר בשלב הראשון", 400);
+  }
+
+  const statusTimestamps = buildStatusTimestamps(previousStatus, new Date(), {
+    openedAt: issue.openedAt,
+    inProgressAt: issue.inProgressAt,
+    doneAt: issue.doneAt,
+  });
+
+  const updatedIssue = await prisma.issue.update({
+    where: { id: issueId },
+    data: {
+      status: previousStatus,
       ...statusTimestamps,
     },
     include: { images: true },
