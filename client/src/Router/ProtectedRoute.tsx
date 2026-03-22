@@ -19,6 +19,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { isAuthenticated, isLoading, currentContext, needsProfileCompletion } = useAuth();
   const location = useLocation();
+  const allowContextSwitch = Boolean(
+    (location.state as { allowContextSwitch?: boolean } | null)?.allowContextSwitch
+  );
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -32,7 +35,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/complete-profile" replace />;
   }
 
-  if (redirectIfContextSelected && currentContext) {
+  if (redirectIfContextSelected && currentContext && !allowContextSwitch) {
     return <Navigate to="/home" replace />;
   }
 

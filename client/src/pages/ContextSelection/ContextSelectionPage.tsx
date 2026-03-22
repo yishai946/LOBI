@@ -2,9 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import axios from 'axios';
-import { Alert, Box, Button, Card, Chip, Divider, IconButton, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, Chip, Divider, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import CloseIcon from '@mui/icons-material/Close';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import PersonIcon from '@mui/icons-material/Person';
@@ -88,7 +87,7 @@ export const ContextSelectionPage = () => {
     }
   };
 
-  const getActionLabel = (context: AuthContextData) => (isActiveContext(context) ? 'כניסה' : 'בחר');
+  const getActionLabel = (context: AuthContextData) => (isActiveContext(context) ? 'נבחר' : 'בחר');
 
   const getMapBackground = (type: ContextType) => {
     switch (type) {
@@ -208,7 +207,7 @@ export const ContextSelectionPage = () => {
               </Typography>
               {isActiveContext(context) && (
                 <Chip
-                  label="פעיל כעת"
+                  label="נבחר כעת"
                   size="small"
                   sx={{
                     position: 'absolute',
@@ -231,7 +230,7 @@ export const ContextSelectionPage = () => {
                 <Button
                   variant={isActiveContext(context) ? 'contained' : 'outlined'}
                   onClick={() => handleSelectContext(context)}
-                  disabled={selectContextMutation.isPending}
+                  disabled={selectContextMutation.isPending || isActiveContext(context)}
                   startIcon={<ArrowBackIcon fontSize="small" />}
                   sx={{
                     minWidth: 82,
