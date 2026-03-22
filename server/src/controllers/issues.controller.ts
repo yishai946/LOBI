@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import * as issuesService from "../services/issues.service";
-import { parsePaginationQuery } from "../utils/pagination";
+import { IssueStatus } from "../enums/issueStatus.enum";
+import {
+  parseEnumQueryParam,
+  parsePaginationQuery,
+  parseSortOrderQuery,
+} from "../utils/pagination";
 
 export const generateUploadUrls = async (req: Request, res: Response) => {
   const result = await issuesService.createUploadUrls(req.user, req.body);
@@ -19,7 +24,16 @@ export const createIssue = async (req: Request, res: Response) => {
 
 export const getIssues = async (req: Request, res: Response) => {
   const pagination = parsePaginationQuery(req.query);
-  const issues = await issuesService.getIssues(req.user, pagination);
+  const status = parseEnumQueryParam(
+    req.query.status,
+    "status",
+    Object.values(IssueStatus),
+  );
+  const sort = parseSortOrderQuery(req.query.sort);
+  const issues = await issuesService.getIssues(req.user, pagination, {
+    status,
+    sortByCreatedAt: sort,
+  });
 
   res.json(issues);
 };

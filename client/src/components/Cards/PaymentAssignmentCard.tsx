@@ -2,6 +2,7 @@ import { paymentService } from '@api/paymentService';
 import { Card, Column, Row } from '@components/containers';
 import { PaymentAssignment } from '@entities/PaymentAssignment';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import { Box, Button, Chip, Typography } from '@mui/material';
 import { useMutation } from '@tanstack/react-query';
 
@@ -54,6 +55,15 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
     },
   });
 
+  const handleReceiptDownload = () => {
+    if (!item.stripeSessionId) {
+      return;
+    }
+
+    const receiptUrl = paymentService.getReceiptDownloadUrl(item.stripeSessionId);
+    window.open(receiptUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <Card isError={isOverdue}>
       <Row sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
@@ -101,25 +111,42 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
             {statusDateText}
           </Typography>
         </Column>
-        <Button
-          variant="contained"
-          disableElevation
-          onClick={() => payNow(item.id)}
-          disabled={!isPending}
-          sx={{
-            px: 3,
-            py: 1,
-            borderRadius: 2,
-            bgcolor: 'primary.dark',
-            color: 'primary.contrastText',
-            fontWeight: 700,
-            '&:hover': {
-              bgcolor: 'primary.main',
-            },
-          }}
-        >
-          {isPending ? (isPaying ? 'מעביר לתשלום...' : 'לתשלום') : 'שולם'}
-        </Button>
+        {isPending ? (
+          <Button
+            variant="contained"
+            disableElevation
+            onClick={() => payNow(item.id)}
+            disabled={isPaying}
+            sx={{
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              bgcolor: isOverdue ? 'error.main' : 'primary.dark',
+              color: 'primary.contrastText',
+              fontWeight: 700,
+              '&:hover': {
+                bgcolor: 'primary.main',
+              },
+            }}
+          >
+            {isPaying ? 'מעביר לתשלום...' : 'לתשלום'}
+          </Button>
+        ) : (
+          <Button
+            variant="outlined"
+            startIcon={<ReceiptLongRoundedIcon />}
+            onClick={handleReceiptDownload}
+            disabled={!item.stripeSessionId}
+            sx={{
+              px: 2.5,
+              py: 1,
+              borderRadius: 2,
+              fontWeight: 700,
+            }}
+          >
+            {item.stripeSessionId ? 'הורדת קבלה' : 'קבלה לא זמינה'}
+          </Button>
+        )}
       </Row>
     </Card>
   );

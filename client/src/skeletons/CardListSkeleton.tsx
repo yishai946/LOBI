@@ -1,18 +1,14 @@
 import { Column } from '@components/containers';
-import { Skeleton, Typography } from '@mui/material';
+import { CardSkeleton } from './CardSkeleton';
 
 interface CardListSkeletonProps {
-  title?: string;
+  count?: number;
 }
 
-export const CardListSkeleton = ({ title }: CardListSkeletonProps) => (
+export const CardListSkeleton = ({ count = 2 }: CardListSkeletonProps) => (
   <Column gap={2}>
-    {title && (
-      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-        {title}
-      </Typography>
-    )}
-    <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 2 }} />
-    <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 2 }} />
+    {Array.from({ length: count }).map((_, index) => (
+      <CardSkeleton key={index} />
+    ))}
   </Column>
 );

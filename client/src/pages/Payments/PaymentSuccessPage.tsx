@@ -2,6 +2,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
+import { paymentService } from '@api/paymentService';
 import { Box, Button, Paper, Stack, Typography } from '@mui/material';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -28,8 +29,7 @@ export const PaymentSuccessPage = () => {
 
     setReceiptError(null);
 
-    const baseApiUrl = import.meta.env.VITE_API_URL;
-    const receiptUrl = `${baseApiUrl}/payments/public/receipt?session_id=${encodeURIComponent(sessionId)}&download=1`;
+    const receiptUrl = paymentService.getReceiptDownloadUrl(sessionId);
     window.open(receiptUrl, '_blank', 'noopener,noreferrer');
   };
 

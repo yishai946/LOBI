@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import * as messageService from "../services/message.service";
-import { parsePaginationQuery } from "../utils/pagination";
+import {
+  parseBooleanQueryParam,
+  parsePaginationQuery,
+  parseSortOrderQuery,
+} from "../utils/pagination";
 
 export const createMessage = async (req: Request, res: Response) => {
   const message = await messageService.createMessage(req.user, req.body);
@@ -13,7 +17,12 @@ export const createMessage = async (req: Request, res: Response) => {
 
 export const getMessages = async (req: Request, res: Response) => {
   const pagination = parsePaginationQuery(req.query);
-  const messages = await messageService.getMessages(req.user, pagination);
+  const isUrgent = parseBooleanQueryParam(req.query.isUrgent, "isUrgent");
+  const sort = parseSortOrderQuery(req.query.sort);
+  const messages = await messageService.getMessages(req.user, pagination, {
+    isUrgent,
+    sortByCreatedAt: sort,
+  });
 
   res.json(messages);
 };

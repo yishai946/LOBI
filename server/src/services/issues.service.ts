@@ -9,7 +9,12 @@ import {
   UploadUrlsCommand,
 } from "../validators/issue.validator";
 import { generateUploadUrls, generateViewUrl } from "./s3.service";
-import { PaginationOptions } from "../utils/pagination";
+import { PaginationOptions, SortOrder } from "../utils/pagination";
+
+interface IssueQueryOptions {
+  status?: IssueStatus;
+  sortByCreatedAt?: SortOrder;
+}
 
 const MAX_IMAGES = 3;
 
@@ -190,18 +195,25 @@ export const createIssue = async (
 export const getIssues = async (
   currentUser: SessionPayload,
   pagination: PaginationOptions = {},
+  queryOptions: IssueQueryOptions = {},
 ) => {
   const { limit, skip } = pagination;
+  const { status, sortByCreatedAt = "desc" } = queryOptions;
 
   const query = {
     include: { images: true },
-    orderBy: { createdAt: "desc" as const },
+    orderBy: { createdAt: sortByCreatedAt },
     skip,
     take: limit,
   };
 
   if (currentUser.sessionType === SessionType.ADMIN) {
-    const issues = await prisma.issue.findMany(query);
+    const issues = await prisma.issue.findMany({
+      where: {
+        ...(status ? { status } : {}),
+      },
+      ...query,
+    });
     return Promise.all(issues.map(mapIssueImagesToSignedUrls));
   }
 
@@ -210,7 +222,10 @@ export const getIssues = async (
   }
 
   const issues = await prisma.issue.findMany({
-    where: { buildingId: currentUser.buildingId },
+    where: {
+      buildingId: currentUser.buildingId,
+      ...(status ? { status } : {}),
+    },
     ...query,
   });
 

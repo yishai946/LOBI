@@ -2,7 +2,20 @@ import { Request, Response } from "express";
 import Stripe from "stripe";
 import * as paymentService from "../services/payment.service";
 import { HttpError } from "../utils/HttpError";
-import { parsePaginationQuery } from "../utils/pagination";
+import {
+  parseEnumQueryParam,
+  parsePaginationQuery,
+  parseSortOrderQuery,
+} from "../utils/pagination";
+
+const paymentFilterValues = [
+  "all",
+  "pending",
+  "paid",
+  "overdue",
+  "upcoming",
+  "recentPaid",
+] as const;
 
 const escapeHtml = (value: string) =>
   value
@@ -24,10 +37,20 @@ export const createPayment = async (req: Request, res: Response) => {
 export const getPayments = async (req: Request, res: Response) => {
   const buildingId = req.query.buildingId as string | undefined;
   const pagination = parsePaginationQuery(req.query);
+  const sort = parseSortOrderQuery(req.query.sort);
+  const filter = parseEnumQueryParam(
+    req.query.filter,
+    "filter",
+    paymentFilterValues,
+  );
   const payments = await paymentService.getPayments(
     req.user,
     buildingId,
     pagination,
+    {
+      sortByDueAt: sort,
+      filter,
+    },
   );
 
   res.json(payments);
@@ -69,7 +92,16 @@ export const deletePayment = async (req: Request, res: Response) => {
 
 export const getMyPayments = async (req: Request, res: Response) => {
   const pagination = parsePaginationQuery(req.query);
-  const payments = await paymentService.getMyPayments(req.user, pagination);
+  const sort = parseSortOrderQuery(req.query.sort);
+  const filter = parseEnumQueryParam(
+    req.query.filter,
+    "filter",
+    paymentFilterValues,
+  );
+  const payments = await paymentService.getMyPayments(req.user, pagination, {
+    sortByDueAt: sort,
+    filter,
+  });
 
   res.json(payments);
 };
@@ -102,6 +134,18 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
   res.json(result);
 };
 
+export const createPayAllCheckoutSession = async (
+  req: Request,
+  res: Response,
+) => {
+  const result = await paymentService.createPayAllCheckoutSession(
+    req.user,
+    req.headers.origin as string | undefined,
+  );
+
+  res.json(result);
+};
+
 export const paymentWebhook = async (req: Request, res: Response) => {
   const signature = req.headers["stripe-signature"];
 
@@ -113,10 +157,19 @@ export const paymentWebhook = async (req: Request, res: Response) => {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    await paymentService.markAssignmentPaid(
-      session.id,
-      session.metadata?.userId,
-    );
+    const assignmentIds = session.metadata?.assignmentIds;
+
+    if (session.metadata?.payAll === "true" && assignmentIds) {
+      await paymentService.markAssignmentsPaid(
+        assignmentIds.split(",").filter(Boolean),
+        session.metadata?.userId,
+      );
+    } else {
+      await paymentService.markAssignmentPaid(
+        session.id,
+        session.metadata?.userId,
+      );
+    }
   }
 
   res.json({ received: true });

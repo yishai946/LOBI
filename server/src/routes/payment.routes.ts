@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createCheckoutSession,
+  createPayAllCheckoutSession,
   createPayment,
   deletePayment,
   getPublicReceipt,
@@ -42,6 +43,7 @@ router.post(
   validate(checkoutPaymentSchema),
   createCheckoutSession,
 );
+router.post("/my/checkout-all", createPayAllCheckoutSession);
 
 webhookRouter.post("/", paymentWebhook);
 publicRouter.get("/receipt", getPublicReceipt);

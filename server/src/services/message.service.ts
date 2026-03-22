@@ -3,7 +3,12 @@ import { HttpError } from "../utils/HttpError";
 import { SessionPayload } from "../types/auth";
 import { SessionType } from "../enums/sessionType.enum";
 import { CreateMessageCommand } from "../validators/message.validator";
-import { PaginationOptions } from "../utils/pagination";
+import { PaginationOptions, SortOrder } from "../utils/pagination";
+
+interface MessageQueryOptions {
+  isUrgent?: boolean;
+  sortByCreatedAt?: SortOrder;
+}
 
 export const createMessage = async (
   currentUser: SessionPayload,
@@ -30,12 +35,17 @@ export const createMessage = async (
 export const getMessages = async (
   currentUser: SessionPayload,
   pagination: PaginationOptions = {},
+  queryOptions: MessageQueryOptions = {},
 ) => {
   const { limit, skip } = pagination;
+  const { isUrgent, sortByCreatedAt = "desc" } = queryOptions;
 
   if (currentUser.sessionType === SessionType.ADMIN) {
     return prisma.message.findMany({
-      orderBy: { createdAt: "desc" },
+      where: {
+        ...(isUrgent !== undefined ? { isUrgent } : {}),
+      },
+      orderBy: { createdAt: sortByCreatedAt },
       skip,
       take: limit,
     });
@@ -46,8 +56,11 @@ export const getMessages = async (
   }
 
   return prisma.message.findMany({
-    where: { buildingId: currentUser.buildingId },
-    orderBy: { createdAt: "desc" },
+    where: {
+      buildingId: currentUser.buildingId,
+      ...(isUrgent !== undefined ? { isUrgent } : {}),
+    },
+    orderBy: { createdAt: sortByCreatedAt },
     skip,
     take: limit,
   });

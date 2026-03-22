@@ -35,7 +35,7 @@ export const ResidentDashboard = () => {
     enabled: !!currentContext,
   });
 
-  const { data: nextPayment } = useQuery({
+  const { data: nextPayment, isLoading: isNextPaymentLoading } = useQuery({
     queryKey: ['payments', 'my', 'next', apartmentId],
     queryFn: paymentService.getMyNextPayment,
     enabled: !!apartmentId,
@@ -65,11 +65,13 @@ export const ResidentDashboard = () => {
           },
         }}
       >
-        {nextPayment && (
+        {(nextPayment || isNextPaymentLoading) && (
           <CardList
             ItemComponent={PaymentAssignmentCard}
             items={nextPayment ? [nextPayment] : []}
             title="תשלום קרוב"
+            isLoading={isNextPaymentLoading}
+            skeletonCount={1}
             emptyMessage="כל התשלומים בוצעו בהצלחה!"
             onClick={() => navigate('/payments')}
           />

@@ -88,11 +88,23 @@ export const theme = createTheme({
           borderRadius: 8,
           padding: '8px 18px',
         },
+        contained: {
+          color: '#ffffff',
+          '&.Mui-disabled': {
+            background: '#D9DEE8',
+            color: '#5B6474',
+          },
+        },
         // Contained buttons echo the lavender banner
         containedPrimary: {
           background: 'linear-gradient(135deg, #7B5EA7 0%, #533A7B 100%)',
+          color: '#ffffff',
           '&:hover': {
             background: 'linear-gradient(135deg, #A98FD4 0%, #7B5EA7 100%)',
+          },
+          '&.Mui-disabled': {
+            background: '#D9DEE8',
+            color: '#5B6474',
           },
         },
       },

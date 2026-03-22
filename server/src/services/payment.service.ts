@@ -10,7 +10,38 @@ import { SessionPayload } from "../types/auth";
 import { PaymentStatus } from "../../generated/prisma/enums";
 import { Prisma } from "../../generated/prisma/client";
 import { SessionType } from "../enums/sessionType.enum";
-import { PaginationOptions } from "../utils/pagination";
+import { PaginationOptions, SortOrder } from "../utils/pagination";
+
+type PaymentFilter =
+  | "all"
+  | "pending"
+  | "paid"
+  | "overdue"
+  | "upcoming"
+  | "recentPaid";
+
+interface PaymentQueryOptions {
+  sortByDueAt?: SortOrder;
+  filter?: PaymentFilter;
+}
+
+const resolveStatusFromFilter = (
+  filter?: PaymentFilter,
+): PaymentStatus | undefined => {
+  if (!filter || filter === "all") {
+    return undefined;
+  }
+
+  if (filter === "pending" || filter === "overdue" || filter === "upcoming") {
+    return PaymentStatus.PENDING;
+  }
+
+  if (filter === "paid" || filter === "recentPaid") {
+    return PaymentStatus.PAID;
+  }
+
+  return undefined;
+};
 
 let stripeClient: Stripe | null = null;
 
@@ -129,22 +160,55 @@ export const getPayments = async (
   currentUser: SessionPayload,
   buildingId?: string,
   pagination: PaginationOptions = {},
+  queryOptions: PaymentQueryOptions = {},
 ) => {
   const { limit, skip } = pagination;
+  const { sortByDueAt = "desc", filter } = queryOptions;
+  const status = resolveStatusFromFilter(filter);
+  const now = new Date();
+  const monthAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 30);
+
+  const dueAtWhere =
+    filter === "overdue"
+      ? { dueAt: { lt: now } }
+      : filter === "upcoming"
+        ? { dueAt: { gte: now } }
+        : {};
 
   if (currentUser.sessionType === SessionType.ADMIN && !buildingId) {
-    return prisma.payment.findMany({
-      orderBy: { createdAt: "desc" },
+    const payments = await prisma.payment.findMany({
+      where: {
+        ...dueAtWhere,
+      },
+      orderBy: { dueAt: sortByDueAt },
       skip,
       take: limit,
     });
+
+    if (!status) {
+      return payments;
+    }
+
+    const filteredPaymentIds = await prisma.paymentAssignment.groupBy({
+      by: ["paymentId"],
+      where: {
+        paymentId: { in: payments.map((payment) => payment.id) },
+        status,
+        ...(filter === "recentPaid" ? { paidAt: { gte: monthAgo } } : {}),
+      },
+    });
+
+    const allowedIds = new Set(
+      filteredPaymentIds.map((item) => item.paymentId),
+    );
+    return payments.filter((payment) => allowedIds.has(payment.id));
   }
 
   const targetBuildingId = resolveBuildingId(currentUser, buildingId);
 
   const payments = await prisma.payment.findMany({
-    where: { buildingId: targetBuildingId },
-    orderBy: { createdAt: "desc" },
+    where: { buildingId: targetBuildingId, ...dueAtWhere },
+    orderBy: { dueAt: sortByDueAt },
     skip,
     take: limit,
   });
@@ -155,7 +219,11 @@ export const getPayments = async (
 
   const stats = await prisma.paymentAssignment.groupBy({
     by: ["paymentId", "status"],
-    where: { paymentId: { in: payments.map((payment) => payment.id) } },
+    where: {
+      paymentId: { in: payments.map((payment) => payment.id) },
+      ...(status ? { status } : {}),
+      ...(filter === "recentPaid" ? { paidAt: { gte: monthAgo } } : {}),
+    },
     _count: { _all: true },
   });
 
@@ -182,7 +250,7 @@ export const getPayments = async (
     }
   }
 
-  return payments.map((payment) => ({
+  const paymentWithStats = payments.map((payment) => ({
     ...payment,
     assignments: statsMap.get(payment.id) ?? {
       total: 0,
@@ -190,6 +258,35 @@ export const getPayments = async (
       pending: 0,
     },
   }));
+
+  if (!status) {
+    if (!filter || filter === "all") {
+      return paymentWithStats;
+    }
+
+    if (filter === "recentPaid") {
+      return paymentWithStats.filter((payment) => payment.assignments.paid > 0);
+    }
+
+    const isOverdue = filter === "overdue";
+    return paymentWithStats.filter((payment) => {
+      const due = new Date(payment.dueAt);
+      if (Number.isNaN(due.getTime())) {
+        return false;
+      }
+
+      return isOverdue
+        ? due.getTime() < now.getTime()
+        : due.getTime() >= now.getTime();
+    });
+  }
+
+  return paymentWithStats.filter((payment) => {
+    if (status === PaymentStatus.PAID) {
+      return payment.assignments.paid > 0;
+    }
+    return payment.assignments.pending > 0;
+  });
 };
 
 export const getPaymentById = async (
@@ -305,20 +402,47 @@ export const getAssignmentsForPayment = async (
 export const getMyPayments = async (
   currentUser: SessionPayload,
   pagination: PaginationOptions = {},
+  queryOptions: PaymentQueryOptions = {},
 ) => {
   const { limit, skip } = pagination;
+  const { sortByDueAt = "asc", filter } = queryOptions;
+  const status = resolveStatusFromFilter(filter);
+  const now = new Date();
+  const monthAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 30);
 
   if (!currentUser.apartmentId) {
     throw new HttpError("נדרש הקשר דירה", 400);
   }
 
   return prisma.paymentAssignment.findMany({
-    where: { apartmentId: currentUser.apartmentId },
+    where: {
+      apartmentId: currentUser.apartmentId,
+      ...(status ? { status } : {}),
+      ...(filter === "overdue"
+        ? {
+            payment: {
+              dueAt: { lt: now },
+            },
+          }
+        : {}),
+      ...(filter === "upcoming"
+        ? {
+            payment: {
+              dueAt: { gte: now },
+            },
+          }
+        : {}),
+      ...(filter === "recentPaid"
+        ? {
+            paidAt: { gte: monthAgo },
+          }
+        : {}),
+    },
     include: { payment: true },
     orderBy: [
       {
         payment: {
-          dueAt: "asc",
+          dueAt: sortByDueAt,
         },
       },
       {
@@ -415,7 +539,7 @@ export const createCheckoutSession = async (
       userId: currentUser.userId,
     },
     success_url: `${baseUrl}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}`,
+    cancel_url: `${baseUrl}/payments`,
   });
 
   if (!session.url) {
@@ -428,6 +552,100 @@ export const createCheckoutSession = async (
   });
 
   return { checkoutUrl: session.url };
+};
+
+export const createPayAllCheckoutSession = async (
+  currentUser: SessionPayload,
+  origin?: string,
+) => {
+  if (currentUser.sessionType !== SessionType.RESIDENT) {
+    throw new HttpError("אסור", 403);
+  }
+
+  if (!currentUser.apartmentId) {
+    throw new HttpError("נדרש הקשר דירה", 400);
+  }
+
+  const pendingAssignments = await prisma.paymentAssignment.findMany({
+    where: {
+      apartmentId: currentUser.apartmentId,
+      status: PaymentStatus.PENDING,
+    },
+    include: {
+      payment: true,
+    },
+    orderBy: [
+      {
+        payment: {
+          dueAt: "asc",
+        },
+      },
+      {
+        createdAt: "asc",
+      },
+    ],
+  });
+
+  if (pendingAssignments.length === 0) {
+    throw new HttpError("אין תשלומים ממתינים לתשלום", 400);
+  }
+
+  const assignmentIds = pendingAssignments.map((assignment) => assignment.id);
+  const assignmentIdsSerialized = assignmentIds.join(",");
+
+  if (assignmentIdsSerialized.length > 480) {
+    throw new HttpError(
+      "יש יותר מדי חיובים פתוחים לתשלום מרוכז. נסה לשלם חלק מהחיובים בנפרד.",
+      400,
+    );
+  }
+
+  const lineItems = pendingAssignments.map((assignment) => {
+    const unitAmount = Math.round(assignment.payment.amount.toNumber() * 100);
+    if (unitAmount < 1) {
+      throw new HttpError("הסכום חייב להיות גדול מ-0", 400);
+    }
+
+    return {
+      price_data: {
+        currency: assignment.payment.currency.toLowerCase(),
+        product_data: {
+          name: assignment.payment.title,
+          description: assignment.payment.description ?? undefined,
+        },
+        unit_amount: unitAmount,
+      },
+      quantity: 1,
+    };
+  });
+
+  const baseUrl = origin || "http://localhost:3000";
+  const session = await getStripeClient().checkout.sessions.create({
+    mode: "payment",
+    payment_method_types: ["card"],
+    line_items: lineItems,
+    metadata: {
+      userId: currentUser.userId,
+      payAll: "true",
+      assignmentIds: assignmentIdsSerialized,
+    },
+    success_url: `${baseUrl}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}`,
+  });
+
+  if (!session.url) {
+    throw new HttpError("כתובת URL של Stripe לא זמינה", 500);
+  }
+
+  await prisma.paymentAssignment.update({
+    where: { id: assignmentIds[0] },
+    data: { stripeSessionId: session.id },
+  });
+
+  return {
+    checkoutUrl: session.url,
+    assignmentsCount: assignmentIds.length,
+  };
 };
 
 export const markAssignmentPaid = async (
@@ -444,7 +662,115 @@ export const markAssignmentPaid = async (
   });
 };
 
+export const markAssignmentsPaid = async (
+  assignmentIds: string[],
+  paidById?: string,
+) => {
+  if (assignmentIds.length === 0) {
+    return { count: 0 };
+  }
+
+  return prisma.paymentAssignment.updateMany({
+    where: {
+      id: { in: assignmentIds },
+      status: PaymentStatus.PENDING,
+    },
+    data: {
+      status: PaymentStatus.PAID,
+      paidAt: new Date(),
+      paidById: paidById || undefined,
+    },
+  });
+};
+
 export const getCustomReceiptBySessionId = async (stripeSessionId: string) => {
+  const session =
+    await getStripeClient().checkout.sessions.retrieve(stripeSessionId);
+  const isPayAll = session.metadata?.payAll === "true";
+  const payAllAssignmentIds = (session.metadata?.assignmentIds || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  if (isPayAll && payAllAssignmentIds.length > 0) {
+    const assignments = await prisma.paymentAssignment.findMany({
+      where: {
+        id: { in: payAllAssignmentIds },
+      },
+      include: {
+        payment: {
+          include: {
+            building: true,
+          },
+        },
+        apartment: true,
+        paidBy: true,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    if (assignments.length === 0) {
+      throw new HttpError("התשלום לא נמצא", 404);
+    }
+
+    const hasPending = assignments.some(
+      (assignment) => assignment.status !== PaymentStatus.PAID,
+    );
+    if (hasPending) {
+      throw new HttpError("הקבלה תהיה זמינה לאחר אישור התשלום", 400);
+    }
+
+    const firstAssignment = assignments[0];
+    const amount = assignments.reduce(
+      (sum, assignment) => sum + assignment.payment.amount.toNumber(),
+      0,
+    );
+    const currency = firstAssignment.payment.currency || DEFAULT_CURRENCY;
+    const formattedAmount = new Intl.NumberFormat("he-IL", {
+      style: "currency",
+      currency,
+    }).format(amount);
+
+    const paidAtCandidates = assignments
+      .map((assignment) => assignment.paidAt)
+      .filter((date): date is Date => Boolean(date));
+    const issueDate =
+      paidAtCandidates[paidAtCandidates.length - 1] || new Date();
+    const receiptNumber = `REC-${stripeSessionId.slice(0, 8).toUpperCase()}`;
+
+    return {
+      receiptNumber,
+      stripeSessionId,
+      issueDateIso: issueDate.toISOString(),
+      formattedAmount,
+      amount,
+      currency,
+      paymentTitle: `תשלום מרוכז (${assignments.length} חיובים)`,
+      paymentDescription: assignments
+        .map((assignment) => assignment.payment.title)
+        .join(", "),
+      paidAtIso: issueDate.toISOString(),
+      buildingName: firstAssignment.payment.building.name || "בניין ללא שם",
+      buildingAddress: firstAssignment.payment.building.address,
+      apartmentName: firstAssignment.apartment.name,
+      payerName: firstAssignment.paidBy?.name || "דייר",
+      payerPhone: firstAssignment.paidBy?.phone || "",
+      businessName:
+        process.env.RECEIPT_BUSINESS_NAME ||
+        firstAssignment.payment.building.name ||
+        "ועד הבית",
+      businessId: process.env.RECEIPT_BUSINESS_ID || "לא צוין",
+      businessType: process.env.RECEIPT_BUSINESS_TYPE || "עוסק",
+      businessAddress:
+        process.env.RECEIPT_BUSINESS_ADDRESS ||
+        firstAssignment.payment.building.address,
+      businessPhone: process.env.RECEIPT_BUSINESS_PHONE || "",
+      businessEmail: process.env.RECEIPT_BUSINESS_EMAIL || "",
+    };
+  }
+
   const assignment = await prisma.paymentAssignment.findUnique({
     where: { stripeSessionId },
     include: {

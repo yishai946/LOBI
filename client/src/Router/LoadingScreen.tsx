@@ -2,7 +2,7 @@ import { Center } from '@components/containers';
 import { CircularProgress } from '@mui/material';
 
 const LoadingScreen = () => (
-  <Center minHeight="100vh" bgcolor="background.default">
+  <Center minHeight="100vh">
     <CircularProgress />
   </Center>
 );
