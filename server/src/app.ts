@@ -21,6 +21,8 @@ import paymentRoutes, {
 } from "./routes/payment.routes";
 import residentsRoutes from "./routes/residents.routes";
 import usersRoutes from "./routes/users.routes";
+import notificationRoutes from "./routes/notification.routes";
+import pushRoutes from "./routes/push.routes";
 
 dotenv.config();
 
@@ -62,6 +64,8 @@ app.use("/api/issues", authMiddleware, issuesRoutes);
 app.use("/api/residents", authMiddleware, residentsRoutes);
 app.use("/api/managers", authMiddleware, managersRoutes);
 app.use("/api/messages", authMiddleware, messagesRoutes);
+app.use("/api/notifications", authMiddleware, notificationRoutes);
+app.use("/api/push", authMiddleware, pushRoutes);
 
 app.use(errorHandler);
 

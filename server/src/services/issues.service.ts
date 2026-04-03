@@ -10,6 +10,7 @@ import {
 } from "../validators/issue.validator";
 import { generateUploadUrls, generateViewUrl } from "./s3.service";
 import { PaginationOptions, SortOrder } from "../utils/pagination";
+import { notifyIssueStatusChanged } from "./notification.service";
 
 interface IssueQueryOptions {
   status?: IssueStatus;
@@ -99,6 +100,32 @@ const resolveScopedBuildingId = (currentUser: SessionPayload): string => {
   return currentUser.buildingId;
 };
 
+const isSameCreatorContext = (
+  currentUser: SessionPayload,
+  createdById: string,
+  createdByContextType: "MANAGER" | "RESIDENT" | "ADMIN" | null,
+): boolean => {
+  return (
+    createdById === currentUser.userId &&
+    createdByContextType !== null &&
+    createdByContextType === currentUser.sessionType
+  );
+};
+
+const getCreatorContextType = (
+  sessionType: SessionType,
+): "MANAGER" | "RESIDENT" | "ADMIN" => {
+  if (sessionType === SessionType.MANAGER) {
+    return "MANAGER";
+  }
+
+  if (sessionType === SessionType.RESIDENT) {
+    return "RESIDENT";
+  }
+
+  return "ADMIN";
+};
+
 const isValidKey = (key: string, buildingId: string) => {
   const prefix = `issues/${buildingId}/`;
   if (!key.startsWith(prefix)) return false;
@@ -114,8 +141,19 @@ type IssueImageRecord = {
   createdAt: Date;
 };
 
+type IssueCreator = {
+  id: string;
+  name: string | null;
+  role: string;
+};
+
 type IssueWithImages<TImage = IssueImageRecord> = {
   images: TImage[];
+};
+
+type IssueWithCreator<TImage = IssueImageRecord> = IssueWithImages<TImage> & {
+  createdByContextType: SessionType | null;
+  createdBy?: IssueCreator | null;
 };
 
 const mapIssueImagesToSignedUrls = async <TIssue extends IssueWithImages>(
@@ -129,6 +167,19 @@ const mapIssueImagesToSignedUrls = async <TIssue extends IssueWithImages>(
       imageUrl: await generateViewUrl(image.imageKey),
     })),
   );
+
+  const issueWithCreator = issue as TIssue & Partial<IssueWithCreator>;
+
+  if (issueWithCreator.createdBy) {
+    return {
+      ...issue,
+      createdBy: {
+        ...issueWithCreator.createdBy,
+        contextType: issueWithCreator.createdByContextType ?? undefined,
+      },
+      images,
+    };
+  }
 
   return {
     ...issue,
@@ -189,6 +240,7 @@ export const createIssue = async (
       status: issueStatus,
       ...statusTimestamps,
       createdById: currentUser.userId,
+      createdByContextType: getCreatorContextType(currentUser.sessionType),
       buildingId,
     },
   });
@@ -305,6 +357,7 @@ export const updateIssue = async (
       id: true,
       buildingId: true,
       createdById: true,
+      createdByContextType: true,
       isUrgent: true,
       openedAt: true,
       inProgressAt: true,
@@ -335,6 +388,17 @@ export const updateIssue = async (
   }
 
   if (issue.buildingId !== currentUser.buildingId) {
+    throw new HttpError("אסור", 403);
+  }
+
+  const isManager = currentUser.sessionType === SessionType.MANAGER;
+  const isIssueCreator = isSameCreatorContext(
+    currentUser,
+    issue.createdById,
+    issue.createdByContextType,
+  );
+
+  if (!isManager && !isIssueCreator) {
     throw new HttpError("אסור", 403);
   }
 
@@ -383,6 +447,16 @@ export const moveIssueToNextStatus = async (
     include: { images: true },
   });
 
+  // Fire-and-forget notification
+  notifyIssueStatusChanged(
+    issue.buildingId,
+    currentUser.userId,
+    issue.createdById,
+    issue.id,
+    issue.title,
+    nextStatus,
+  );
+
   return mapIssueImagesToSignedUrls(updatedIssue);
 };
 
@@ -425,6 +499,16 @@ export const moveIssueToPreviousStatus = async (
     include: { images: true },
   });
 
+  // Fire-and-forget notification
+  notifyIssueStatusChanged(
+    issue.buildingId,
+    currentUser.userId,
+    issue.createdById,
+    issue.id,
+    issue.title,
+    previousStatus,
+  );
+
   return mapIssueImagesToSignedUrls(updatedIssue);
 };
 
@@ -434,6 +518,12 @@ export const deleteIssue = async (
 ) => {
   const issue = await prisma.issue.findUnique({
     where: { id: issueId },
+    select: {
+      id: true,
+      buildingId: true,
+      createdById: true,
+      createdByContextType: true,
+    },
   });
 
   if (!issue) throw new HttpError("הבעיה לא נמצאה", 404);
@@ -443,6 +533,20 @@ export const deleteIssue = async (
   }
 
   if (issue.buildingId !== currentUser.buildingId) {
+    throw new HttpError("אסור", 403);
+  }
+
+  if (currentUser.sessionType === SessionType.MANAGER) {
+    return prisma.issue.delete({ where: { id: issueId } });
+  }
+
+  const isIssueCreator = isSameCreatorContext(
+    currentUser,
+    issue.createdById,
+    issue.createdByContextType,
+  );
+
+  if (!isIssueCreator) {
     throw new HttpError("אסור", 403);
   }
 

@@ -4,6 +4,7 @@ import { Column, Row } from '@components/containers';
 import { IssueStatus } from '@enums/IssueStatus';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import { Box, Button, IconButton, Step, StepLabel, Stepper, Typography } from '@mui/material';
 import { ContextType } from '@enums/ContextType';
 import { useAuth } from '@providers/AuthContext';
@@ -14,6 +15,8 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { IssueCard } from '@components/Cards/IssueCard';
 import { IssueDetailsPageSkeleton } from '@skeletons/IssueDetailsPageSkeleton';
+import { EditIssueDialog } from './EditIssueDialog';
+import { translateContextType } from '@utils/contextTypeTranslations';
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof AxiosError) {
@@ -43,12 +46,13 @@ const formatDate = (value?: string | null): string => {
 };
 
 export const IssueDetailsPage = () => {
-  const { currentContext } = useAuth();
+  const { currentContext, user } = useAuth();
   const { showError, showSuccess } = useGlobalMessage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { issueId } = useParams<{ issueId: string }>();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const canManage =
     currentContext?.type === ContextType.MANAGER || currentContext?.type === ContextType.ADMIN;
@@ -104,6 +108,13 @@ export const IssueDetailsPage = () => {
     );
   }
 
+  const isSameCreatorContext =
+    issue.createdById === user?.id &&
+    Boolean(issue.createdBy?.contextType) &&
+    issue.createdBy?.contextType === currentContext?.type;
+  const canEdit = canManage || isSameCreatorContext;
+  const canDelete = canManage || isSameCreatorContext;
+
   const handleDelete = () => setIsDeleteDialogOpen(true);
 
   const handleDeleteCancel = () => {
@@ -125,13 +136,27 @@ export const IssueDetailsPage = () => {
         <Button startIcon={<ArrowBackRoundedIcon />} onClick={() => navigate('/issues')}>
           חזרה
         </Button>
-        {canManage && (
-          <IconButton onClick={handleDelete} disabled={deleteIssueMutation.isPending} color="error">
-            <DeleteOutlineRoundedIcon />
-          </IconButton>
-        )}
+        <Row sx={{ gap: 1 }}>
+          {canEdit && (
+            <IconButton onClick={() => setIsEditDialogOpen(true)} color="primary">
+              <EditRoundedIcon />
+            </IconButton>
+          )}
+          {canDelete && (
+            <IconButton
+              onClick={handleDelete}
+              disabled={deleteIssueMutation.isPending}
+              color="error"
+            >
+              <DeleteOutlineRoundedIcon />
+            </IconButton>
+          )}
+        </Row>
       </Row>
       <IssueCard item={issue} isClickable={false} />
+      <Typography variant="body2" color="text.secondary">
+        {`נפתח על ידי ${issue.createdBy?.name || 'לא ידוע'} (${translateContextType(issue.createdBy?.contextType || issue.createdBy?.role)})`}
+      </Typography>
       <Column sx={{ gap: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           ציר זמן טיפול
@@ -200,6 +225,11 @@ export const IssueDetailsPage = () => {
         confirmLabel="מחיקה"
         isConfirming={deleteIssueMutation.isPending}
         confirmColor="error"
+      />
+      <EditIssueDialog
+        open={isEditDialogOpen}
+        issue={issue}
+        onClose={() => setIsEditDialogOpen(false)}
       />
     </Column>
   );

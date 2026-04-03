@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { AuthProvider } from './providers/AuthContext';
+import { SocketProvider } from './providers/SocketContext';
 import { MessageProvider } from './providers/MessageProvider';
 import { AppRouter } from './Router/AppRouter';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -23,7 +24,9 @@ export default function App() {
           <ErrorBoundary>
             <BrowserRouter>
               <AuthProvider>
-                <AppRouter />
+                <SocketProvider>
+                  <AppRouter />
+                </SocketProvider>
               </AuthProvider>
             </BrowserRouter>
           </ErrorBoundary>

@@ -4,13 +4,17 @@ import { Center, Row } from './containers';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
+import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded';
 import { useAuth } from '@providers/AuthContext';
 import { translateContextType } from '@utils/contextTypeTranslations';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { NotificationBell } from './NotificationBell';
 
 export const Header = () => {
   const { currentContext, contexts, logout } = useAuth();
   const navigate = useNavigate();
+  const reactQueryClient = useQueryClient();
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
   const isMenuOpen = Boolean(menuAnchorEl);
@@ -26,14 +30,21 @@ export const Header = () => {
 
   const handleSwitchContext = () => {
     closeMenu();
+    reactQueryClient.clear();
     navigate('/select-context', {
       state: { allowContextSwitch: true },
     });
   };
 
+  const handleNavigateToSettings = () => {
+    closeMenu();
+    navigate('/settings/notifications');
+  };
+
   const handleLogout = () => {
     closeMenu();
     logout();
+    reactQueryClient.clear();
   };
 
   return (
@@ -84,6 +95,10 @@ export const Header = () => {
           </Box>
         </Row>
 
+        <Row sx={{ alignItems: 'center', gap: 0.5 }}>
+          <NotificationBell />
+        </Row>
+
         <Menu
           anchorEl={menuAnchorEl}
           open={isMenuOpen}
@@ -99,6 +114,12 @@ export const Header = () => {
               החלף פרופיל
             </MenuItem>
           )}
+          <MenuItem onClick={handleNavigateToSettings}>
+            <ListItemIcon>
+              <NotificationsActiveRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            הגדרות התראות
+          </MenuItem>
           <MenuItem onClick={handleLogout}>
             <ListItemIcon>
               <LogoutRoundedIcon fontSize="small" />

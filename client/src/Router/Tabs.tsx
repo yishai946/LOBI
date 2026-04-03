@@ -24,7 +24,6 @@ interface QuickAction {
   icon: ReactNode;
   path: string;
   allowedRoles: ContextType[];
-  angle: number;
   gradient: string;
 }
 
@@ -34,8 +33,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     name: 'תשלום חדש',
     icon: <PaymentsRoundedIcon />,
     path: '/payments/new',
-    allowedRoles: [ContextType.RESIDENT, ContextType.MANAGER, ContextType.ADMIN],
-    angle: -150,
+    allowedRoles: [ContextType.MANAGER, ContextType.ADMIN],
     gradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
   },
   {
@@ -44,7 +42,6 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: <ReportProblemRoundedIcon />,
     path: '/issues/new',
     allowedRoles: [ContextType.RESIDENT, ContextType.MANAGER, ContextType.ADMIN],
-    angle: -90,
     gradient: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
   },
   {
@@ -53,10 +50,25 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: <MarkunreadRoundedIcon />,
     path: '/messages/new',
     allowedRoles: [ContextType.RESIDENT, ContextType.MANAGER, ContextType.ADMIN],
-    angle: -30,
     gradient: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
   },
 ];
+
+const getActionAngle = (index: number, total: number): number => {
+  if (total <= 1) {
+    return -90;
+  }
+
+  if (total === 2) {
+    return index === 0 ? -120 : -60;
+  }
+
+  const spread = 120;
+  const start = -90 - spread / 2;
+  const step = spread / (total - 1);
+
+  return start + step * index;
+};
 
 const Tabs = () => {
   const { currentContext, isAuthenticated } = useAuth();
@@ -202,70 +214,74 @@ const Tabs = () => {
             transition: 'bottom 220ms ease',
           }}
         >
-          {quickActions.map((action) => (
-            <Box
-              key={action.key}
-              sx={{
-                position: 'absolute',
-                left: centerFabSize / 2,
-                top: centerFabSize / 2,
-                width: 0,
-                height: 0,
-                transform: isDialOpen
-                  ? `translate(-50%, -50%) translate(${Math.cos((action.angle * Math.PI) / 180) * fanRadius}px, ${Math.sin((action.angle * Math.PI) / 180) * fanRadius}px)`
-                  : 'translate(-50%, -50%) translate(0, 0)',
-                opacity: isDialOpen ? 1 : 0,
-                transition: 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms ease',
-                pointerEvents: isDialOpen ? 'auto' : 'none',
-              }}
-            >
-              <Fab
-                size="medium"
-                onClick={() => {
-                  setIsDialOpen(false);
-                  navigate(action.path);
-                }}
-                sx={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  transform: 'translate(-50%, -50%)',
-                  width: actionFabSize,
-                  height: actionFabSize,
-                  color: '#fff',
-                  background: action.gradient,
-                  boxShadow: '0 10px 24px rgba(2, 6, 23, 0.28)',
-                  '&:hover': {
-                    filter: 'brightness(1.05)',
-                    boxShadow: '0 14px 28px rgba(2, 6, 23, 0.35)',
-                  },
-                }}
-              >
-                {action.icon}
-              </Fab>
+          {quickActions.map((action, index) => {
+            const actionAngle = getActionAngle(index, quickActions.length);
 
+            return (
               <Box
+                key={action.key}
                 sx={{
                   position: 'absolute',
-                  left: 0,
-                  top: 38,
-                  transform: 'translateX(-50%)',
-                  px: 0.8,
-                  py: 0.25,
-                  borderRadius: 1.5,
-                  bgcolor: 'rgba(31, 41, 55, 0.92)',
-                  color: '#fff',
-                  boxShadow: '0 8px 18px rgba(15, 23, 42, 0.28)',
-                  textAlign: 'center',
-                  whiteSpace: 'nowrap',
+                  left: centerFabSize / 2,
+                  top: centerFabSize / 2,
+                  width: 0,
+                  height: 0,
+                  transform: isDialOpen
+                    ? `translate(-50%, -50%) translate(${Math.cos((actionAngle * Math.PI) / 180) * fanRadius}px, ${Math.sin((actionAngle * Math.PI) / 180) * fanRadius}px)`
+                    : 'translate(-50%, -50%) translate(0, 0)',
+                  opacity: isDialOpen ? 1 : 0,
+                  transition: 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms ease',
+                  pointerEvents: isDialOpen ? 'auto' : 'none',
                 }}
               >
-                <Typography sx={{ fontWeight: 700, lineHeight: 1, fontSize: 11 }}>
-                  {action.name}
-                </Typography>
+                <Fab
+                  size="medium"
+                  onClick={() => {
+                    setIsDialOpen(false);
+                    navigate(action.path);
+                  }}
+                  sx={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    transform: 'translate(-50%, -50%)',
+                    width: actionFabSize,
+                    height: actionFabSize,
+                    color: '#fff',
+                    background: action.gradient,
+                    boxShadow: '0 10px 24px rgba(2, 6, 23, 0.28)',
+                    '&:hover': {
+                      filter: 'brightness(1.05)',
+                      boxShadow: '0 14px 28px rgba(2, 6, 23, 0.35)',
+                    },
+                  }}
+                >
+                  {action.icon}
+                </Fab>
+
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 38,
+                    transform: 'translateX(-50%)',
+                    px: 0.8,
+                    py: 0.25,
+                    borderRadius: 1.5,
+                    bgcolor: 'rgba(31, 41, 55, 0.92)',
+                    color: '#fff',
+                    boxShadow: '0 8px 18px rgba(15, 23, 42, 0.28)',
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <Typography sx={{ fontWeight: 700, lineHeight: 1, fontSize: 11 }}>
+                    {action.name}
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          ))}
+            );
+          })}
 
           <Fab
             onClick={() => setIsDialOpen((prev) => !prev)}

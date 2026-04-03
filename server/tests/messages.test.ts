@@ -27,7 +27,7 @@ describe("Message routes", () => {
     expect(res.status).toBe(201);
   });
 
-  it("resident cannot create message", async () => {
+  it("resident can create message", async () => {
     const { residentUser, building, apartment } = await seedCore();
     const token = signToken({
       userId: residentUser.id,
@@ -41,7 +41,7 @@ describe("Message routes", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ title: "Notice", content: "Hello" });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(201);
   });
 
   it("admin cannot create message", async () => {
@@ -112,10 +112,20 @@ describe("Message routes", () => {
       data: { name: "Other", address: "Else 20" },
     });
     await prisma.message.create({
-      data: { buildingId: building.id, title: "Mine", content: "Yes" },
+      data: {
+        buildingId: building.id,
+        createdById: managerUser.id,
+        title: "Mine",
+        content: "Yes",
+      },
     });
     await prisma.message.create({
-      data: { buildingId: otherBuilding.id, title: "Other", content: "No" },
+      data: {
+        buildingId: otherBuilding.id,
+        createdById: managerUser.id,
+        title: "Other",
+        content: "No",
+      },
     });
 
     const token = signToken({
@@ -142,10 +152,20 @@ describe("Message routes", () => {
       data: { name: "Other", address: "Else 21" },
     });
     await prisma.message.create({
-      data: { buildingId: building.id, title: "Mine", content: "Yes" },
+      data: {
+        buildingId: building.id,
+        createdById: residentUser.id,
+        title: "Mine",
+        content: "Yes",
+      },
     });
     await prisma.message.create({
-      data: { buildingId: otherBuilding.id, title: "Other", content: "No" },
+      data: {
+        buildingId: otherBuilding.id,
+        createdById: residentUser.id,
+        title: "Other",
+        content: "No",
+      },
     });
 
     const token = signToken({
@@ -165,6 +185,32 @@ describe("Message routes", () => {
         (m: { buildingId: string }) => m.buildingId === building.id,
       ),
     ).toBe(true);
+  });
+
+  it("pinned messages appear first", async () => {
+    const { managerUser, building } = await seedCore();
+    const token = signToken({
+      userId: managerUser.id,
+      sessionType: SessionType.MANAGER,
+      buildingId: building.id,
+    });
+
+    await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ title: "Regular", content: "Normal", isPinned: false });
+
+    await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ title: "Pinned", content: "Top", isPinned: true });
+
+    const res = await request(app)
+      .get("/api/messages")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body[0]?.isPinned).toBe(true);
   });
 
   it("manager can get message by id", async () => {
@@ -259,7 +305,12 @@ describe("Message routes", () => {
       data: { name: "Other", address: "Else 22" },
     });
     const message = await prisma.message.create({
-      data: { buildingId: otherBuilding.id, title: "Other", content: "No" },
+      data: {
+        buildingId: otherBuilding.id,
+        createdById: managerUser.id,
+        title: "Other",
+        content: "No",
+      },
     });
 
     const token = signToken({
@@ -271,6 +322,89 @@ describe("Message routes", () => {
     const res = await request(app)
       .get(`/api/messages/${message.id}`)
       .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it("manager can delete message from their building", async () => {
+    const { managerUser, building } = await seedCore();
+    const managerToken = signToken({
+      userId: managerUser.id,
+      sessionType: SessionType.MANAGER,
+      buildingId: building.id,
+    });
+
+    const created = await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({ title: "To delete", content: "Bye" });
+
+    const res = await request(app)
+      .delete(`/api/messages/${created.body.data.id}`)
+      .set("Authorization", `Bearer ${managerToken}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("resident can delete own message", async () => {
+    const { residentUser, building, apartment } = await seedCore();
+    const residentToken = signToken({
+      userId: residentUser.id,
+      sessionType: SessionType.RESIDENT,
+      buildingId: building.id,
+      apartmentId: apartment.id,
+    });
+
+    const created = await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${residentToken}`)
+      .send({ title: "To delete", content: "Bye" });
+
+    const res = await request(app)
+      .delete(`/api/messages/${created.body.data.id}`)
+      .set("Authorization", `Bearer ${residentToken}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("resident cannot delete another resident's message", async () => {
+    const { building, apartment } = await seedCore();
+    const firstResident = await prisma.user.create({
+      data: { phone: `05${Date.now()}31`, name: "Resident One" },
+    });
+    const secondResident = await prisma.user.create({
+      data: { phone: `05${Date.now()}32`, name: "Resident Two" },
+    });
+
+    await prisma.resident.create({
+      data: { userId: firstResident.id, apartmentId: apartment.id },
+    });
+    await prisma.resident.create({
+      data: { userId: secondResident.id, apartmentId: apartment.id },
+    });
+
+    const firstToken = signToken({
+      userId: firstResident.id,
+      sessionType: SessionType.RESIDENT,
+      buildingId: building.id,
+      apartmentId: apartment.id,
+    });
+
+    const secondToken = signToken({
+      userId: secondResident.id,
+      sessionType: SessionType.RESIDENT,
+      buildingId: building.id,
+      apartmentId: apartment.id,
+    });
+
+    const created = await request(app)
+      .post("/api/messages")
+      .set("Authorization", `Bearer ${firstToken}`)
+      .send({ title: "To delete", content: "Bye" });
+
+    const res = await request(app)
+      .delete(`/api/messages/${created.body.data.id}`)
+      .set("Authorization", `Bearer ${secondToken}`);
 
     expect(res.status).toBe(403);
   });
@@ -300,7 +434,7 @@ describe("Message routes", () => {
     expect(res.status).toBe(200);
   });
 
-  it("manager cannot delete message", async () => {
+  it("manager can delete another user's message in same building", async () => {
     const { managerUser, building } = await seedCore();
     const managerToken = signToken({
       userId: managerUser.id,
@@ -308,16 +442,35 @@ describe("Message routes", () => {
       buildingId: building.id,
     });
 
+    const residentUser = await prisma.user.create({
+      data: { phone: `05${Date.now()}33`, name: "Resident Three" },
+    });
+
+    const apartment = await prisma.apartment.findFirstOrThrow({
+      where: { buildingId: building.id },
+    });
+
+    await prisma.resident.create({
+      data: { userId: residentUser.id, apartmentId: apartment.id },
+    });
+
+    const residentToken = signToken({
+      userId: residentUser.id,
+      sessionType: SessionType.RESIDENT,
+      buildingId: building.id,
+      apartmentId: apartment.id,
+    });
+
     const created = await request(app)
       .post("/api/messages")
-      .set("Authorization", `Bearer ${managerToken}`)
+      .set("Authorization", `Bearer ${residentToken}`)
       .send({ title: "To delete", content: "Bye" });
 
     const res = await request(app)
       .delete(`/api/messages/${created.body.data.id}`)
       .set("Authorization", `Bearer ${managerToken}`);
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
   });
 
   it("resident cannot delete message", async () => {

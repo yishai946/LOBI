@@ -36,6 +36,19 @@ export const getMessageById = async (req: Request, res: Response) => {
   res.json(message);
 };
 
+export const updateMessage = async (req: Request, res: Response) => {
+  const message = await messageService.updateMessage(
+    req.user,
+    req.params.messageId as string,
+    req.body,
+  );
+
+  res.json({
+    message: "Message updated successfully",
+    data: message,
+  });
+};
+
 export const deleteMessage = async (req: Request, res: Response) => {
   const message = await messageService.deleteMessage(
     req.user,

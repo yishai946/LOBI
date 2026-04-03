@@ -99,11 +99,10 @@ export const IssuesPage = () => {
         }}
         sortConfig={{
           label: 'מיון',
+          variant: 'direction-toggle',
           value: activeSort,
-          options: [
-            { label: 'חדש', value: 'new' },
-            { label: 'ישן', value: 'old' },
-          ],
+          ascValue: 'old',
+          descValue: 'new',
           onChange: (value) => {
             setActiveSort(value as IssuesSort);
             setActivePage(1);

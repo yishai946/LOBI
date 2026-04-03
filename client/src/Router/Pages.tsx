@@ -52,6 +52,9 @@ const UnauthorizedPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('@pages/NotFound/NotFoundPage').then((module) => ({ default: module.NotFoundPage }))
 );
+const NotificationSettingsPage = lazy(() =>
+  import('@pages/NotificationSettings').then((module) => ({ default: module.NotificationSettings }))
+);
 
 export interface PageDefinition {
   path: string;
@@ -96,6 +99,14 @@ const Pages: PageDefinition[] = [
     isVisibleInMenu: false,
   },
   {
+    path: '/payments/new',
+    element: <PaymentsPage />,
+    isVisibleInMenu: false,
+    isProtected: true,
+    requireContext: true,
+    allowedRoles: [ContextType.MANAGER, ContextType.ADMIN],
+  },
+  {
     path: '/issues',
     element: <IssuesPage />,
     title: 'תקלות',
@@ -128,6 +139,13 @@ const Pages: PageDefinition[] = [
     requireContext: true,
   },
   {
+    path: '/messages/new',
+    element: <MessagesPage />,
+    isVisibleInMenu: false,
+    isProtected: true,
+    requireContext: true,
+  },
+  {
     path: '/login',
     element: <LoginPage />,
     isVisibleInMenu: false,
@@ -156,6 +174,13 @@ const Pages: PageDefinition[] = [
   {
     path: '/unauthorized',
     element: <UnauthorizedPage />,
+    isVisibleInMenu: false,
+    isProtected: true,
+    requireContext: true,
+  },
+  {
+    path: '/settings/notifications',
+    element: <NotificationSettingsPage />,
     isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,

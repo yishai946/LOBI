@@ -19,18 +19,6 @@ interface IssueCardProps {
   isClickable?: boolean;
 }
 
-const translateReporterRole = (role?: string): string => {
-  if (role === 'ADMIN') {
-    return 'אדמין';
-  }
-
-  if (role === 'USER') {
-    return 'דייר';
-  }
-
-  return 'לא ידוע';
-};
-
 const getStatusChipSx = (status: IssueStatus) => {
   return (theme: Theme) => {
     if (status === IssueStatus.OPEN) {
@@ -66,7 +54,6 @@ export const IssueCard = ({ item, isClickable = true }: IssueCardProps) => {
   const hasImage = Boolean(imageUrl);
   const [isImageLoaded, setIsImageLoaded] = useState(!hasImage);
   const hasStatusActions = !isClickable;
-  const showReporterInfo = Boolean(item.createdBy);
   const canManage =
     currentContext?.type === ContextType.MANAGER || currentContext?.type === ContextType.ADMIN;
   const isAtFirstStatus = item.status === IssueStatus.OPEN;
@@ -120,7 +107,7 @@ export const IssueCard = ({ item, isClickable = true }: IssueCardProps) => {
         },
       }}
     >
-      <Row gap={2} width="100%" alignItems="flex-start" pb={1.5}>
+      <Row gap={2} width="100%" alignItems="flex-start">
         {hasImage && (
           <Box
             sx={{
@@ -227,19 +214,6 @@ export const IssueCard = ({ item, isClickable = true }: IssueCardProps) => {
           </Row>
         </Row>
       </Row>
-      {showReporterInfo && (
-        <Box
-          sx={{
-            position: 'absolute',
-            right: 16,
-            bottom: 12,
-          }}
-        >
-          <Typography variant="body2" color="text.secondary">
-            {`${item.createdBy?.name || 'לא ידוע'} (${translateReporterRole(item.createdBy?.role)})`}
-          </Typography>
-        </Box>
-      )}
     </Card>
   );
 };

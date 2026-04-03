@@ -2,9 +2,12 @@ import { PaymentFilterParam, RecurringSeries, paymentService } from '@api/paymen
 import Banner from '@components/Banner';
 import { PaymentAssignmentCard } from '@components/Cards/PaymentAssignmentCard';
 import { CardList, Column } from '@components/containers';
+import { ContextType } from '@enums/ContextType';
 import { Box, Button, Chip, Divider, Typography } from '@mui/material';
+import { useAuth } from '@providers/AuthContext';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { ManagerPaymentsPage } from './ManagerPaymentsPage';
 
 const formatCurrency = (amount: number, currency: string): string =>
   new Intl.NumberFormat('he-IL', {
@@ -13,7 +16,7 @@ const formatCurrency = (amount: number, currency: string): string =>
     maximumFractionDigits: 2,
   }).format(amount);
 
-export const PaymentsPage = () => {
+const ResidentPaymentsPage = () => {
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<PaymentFilterParam>('all');
   const [activeSort, setActiveSort] = useState('dueDesc');
@@ -59,6 +62,8 @@ export const PaymentsPage = () => {
       paymentService.setMyRecurringEnrollment(seriesId, enabled),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments', 'my', 'recurring-series'] });
+      queryClient.invalidateQueries({ queryKey: ['payments', 'my', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['payments', 'my', 'list', 'pending', 'old'] });
     },
   });
 
@@ -81,6 +86,19 @@ export const PaymentsPage = () => {
 
   return (
     <Column>
+      <Banner
+        title={formattedTotalPendingAmount}
+        subtitle='סה"כ הכל לתשלום'
+        caption={
+          totalPendingAmount > 0
+            ? 'לחץ על כפתור "שלם עכשיו" כדי לשלם את כל התשלומים הממתינים'
+            : 'אין תשלומים ממתינים לתשלום.'
+        }
+        isLoading={isTotalPaymentLoading}
+        buttonLabel="שלם עכשיו"
+        onButtonClick={totalPendingAmount > 0 ? payAllNow : undefined}
+        isActionLoading={isRedirectingToCheckout}
+      />
       <Column
         sx={{
           mb: 2,
@@ -112,6 +130,12 @@ export const PaymentsPage = () => {
             {recurringSeries.map((series) => {
               const enrollment = getEnrollment(series);
               const isActive = enrollment?.status === 'ACTIVE';
+              const nextBillingText = enrollment?.nextBillingAt
+                ? new Date(enrollment.nextBillingAt).toLocaleDateString('he-IL')
+                : null;
+              const lastChargedText = enrollment?.lastChargedAt
+                ? new Date(enrollment.lastChargedAt).toLocaleDateString('he-IL')
+                : null;
 
               return (
                 <Box
@@ -153,6 +177,18 @@ export const PaymentsPage = () => {
                       תאריך חיוב חודשי: יום {series.anchorDay}
                     </Typography>
 
+                    {nextBillingText && (
+                      <Typography variant="body2" color="text.secondary">
+                        חיוב הבא: {nextBillingText}
+                      </Typography>
+                    )}
+
+                    {lastChargedText && (
+                      <Typography variant="body2" color="text.secondary">
+                        חיוב אחרון: {lastChargedText}
+                      </Typography>
+                    )}
+
                     <Button
                       variant={isActive ? 'outlined' : 'contained'}
                       onClick={() => setEnrollment({ seriesId: series.id, enabled: !isActive })}
@@ -170,20 +206,6 @@ export const PaymentsPage = () => {
       </Column>
 
       <Divider sx={{ mb: 2 }} />
-
-      <Banner
-        title={formattedTotalPendingAmount}
-        subtitle='סה"כ הכל לתשלום'
-        caption={
-          totalPendingAmount > 0
-            ? 'לחץ על כפתור "שלם עכשיו" כדי לשלם את כל התשלומים הממתינים'
-            : 'אין תשלומים ממתינים לתשלום.'
-        }
-        isLoading={isTotalPaymentLoading}
-        buttonLabel="שלם עכשיו"
-        onButtonClick={totalPendingAmount > 0 ? payAllNow : undefined}
-        isActionLoading={isRedirectingToCheckout}
-      />
 
       <CardList
         ItemComponent={PaymentAssignmentCard}
@@ -209,11 +231,10 @@ export const PaymentsPage = () => {
         }}
         sortConfig={{
           label: 'מיון',
+          variant: 'direction-toggle',
           value: activeSort,
-          options: [
-            { label: 'חדש', value: 'dueDesc' },
-            { label: 'ישן', value: 'dueAsc' },
-          ],
+          ascValue: 'dueAsc',
+          descValue: 'dueDesc',
           onChange: (value) => {
             setActiveSort(value);
             setActivePage(1);
@@ -233,4 +254,14 @@ export const PaymentsPage = () => {
       />
     </Column>
   );
+};
+
+export const PaymentsPage = () => {
+  const { currentContext } = useAuth();
+
+  if (currentContext?.type === ContextType.MANAGER || currentContext?.type === ContextType.ADMIN) {
+    return <ManagerPaymentsPage />;
+  }
+
+  return <ResidentPaymentsPage />;
 };

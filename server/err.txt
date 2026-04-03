@@ -1,0 +1,27 @@
+BIG ERROR:
+
+Invalid `prisma.building.create()` invocation in
+C:\react\LOBI\server\prisma\seed.ts:8:42
+
+  5 console.log('Seeding the database...');
+  6 
+  7 // 1. Create a building
+→ 8 const building = await prisma.building.create(
+Can't reach database server at base
+CODE: P1001
+META: {
+  modelName: 'Building',
+  driverAdapterError: DriverAdapterError: DatabaseNotReachable
+      at PrismaPgAdapter.onError (C:\react\LOBI\server\node_modules\@prisma\adapter-pg\dist\index.js:687:11)
+      at PrismaPgAdapter.performIO (C:\react\LOBI\server\node_modules\@prisma\adapter-pg\dist\index.js:682:12)
+      at processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async PrismaPgAdapter.queryRaw (C:\react\LOBI\server\node_modules\@prisma\adapter-pg\dist\index.js:602:30)
+      at async e.interpretNode (C:\react\LOBI\server\node_modules\@prisma\client-engine-runtime\src\interpreter\query-interpreter.ts:186:26)
+      at async e.interpretNode (C:\react\LOBI\server\node_modules\@prisma\client-engine-runtime\src\interpreter\query-interpreter.ts:213:41)
+      at async e.interpretNode (C:\react\LOBI\server\node_modules\@prisma\client-engine-runtime\src\interpreter\query-interpreter.ts:272:41)
+      at async e.run (C:\react\LOBI\server\node_modules\@prisma\client-engine-runtime\src\interpreter\query-interpreter.ts:94:23)
+      at async execute (C:\react\LOBI\server\node_modules\@prisma\client\src\runtime\core\engines\client\LocalExecutor.ts:81:12)
+      at async jt.request (C:\react\LOBI\server\node_modules\@prisma\client\src\runtime\core\engines\client\ClientEngine.ts:492:22) {
+    cause: { kind: 'DatabaseNotReachable', host: 'base', port: undefined }
+  }
+}

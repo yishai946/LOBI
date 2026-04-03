@@ -20,6 +20,7 @@ import { Prisma } from "../../generated/prisma/client";
 import { SessionType } from "../enums/sessionType.enum";
 import { PaginationOptions, SortOrder } from "../utils/pagination";
 import { getPaymentProvider } from "./paymentProviders";
+import { notifyNewPayment } from "./notification.service";
 
 type PaymentFilter =
   | "all"
@@ -33,6 +34,8 @@ interface PaymentQueryOptions {
   sortByDueAt?: SortOrder;
   filter?: PaymentFilter;
 }
+
+type PaymentTx = Prisma.TransactionClient;
 
 const resolveStatusFromFilter = (
   filter?: PaymentFilter,
@@ -99,6 +102,172 @@ const ensureBuildingAccess = async (
   }
 };
 
+const getActiveEnrollmentApartmentIds = async (
+  tx: PaymentTx,
+  seriesId: string,
+) => {
+  const activeEnrollments = await tx.recurringPaymentEnrollment.findMany({
+    where: {
+      seriesId,
+      status: RecurringEnrollmentStatus.ACTIVE,
+    },
+    select: { apartmentId: true },
+  });
+
+  return activeEnrollments.map((enrollment) => enrollment.apartmentId);
+};
+
+const removeUnpaidRecurringPaymentsForSeries = async (
+  tx: PaymentTx,
+  seriesId: string,
+) => {
+  const recurringPayments = await tx.payment.findMany({
+    where: {
+      recurringSeriesId: seriesId,
+      isRecurring: true,
+    },
+    select: {
+      id: true,
+      assignments: {
+        select: {
+          status: true,
+        },
+      },
+    },
+  });
+
+  const deletablePaymentIds = recurringPayments
+    .filter(
+      (payment) =>
+        payment.assignments.length === 0 ||
+        payment.assignments.every(
+          (assignment) => assignment.status !== PaymentStatus.PAID,
+        ),
+    )
+    .map((payment) => payment.id);
+
+  if (deletablePaymentIds.length === 0) {
+    return;
+  }
+
+  await tx.payment.deleteMany({
+    where: {
+      id: { in: deletablePaymentIds },
+    },
+  });
+};
+
+const ensureAssignmentForApartment = async (
+  tx: PaymentTx,
+  paymentId: string,
+  apartmentId: string,
+) => {
+  await tx.paymentAssignment.upsert({
+    where: {
+      paymentId_apartmentId: {
+        paymentId,
+        apartmentId,
+      },
+    },
+    create: {
+      paymentId,
+      apartmentId,
+      status: PaymentStatus.PENDING,
+    },
+    update: {
+      status: PaymentStatus.PENDING,
+      paidAt: null,
+      paidById: null,
+      stripeSessionId: null,
+    },
+  });
+};
+
+const rebuildMissingRecurringPaymentsForSeries = async (
+  tx: PaymentTx,
+  series: {
+    id: string;
+    title: string;
+    description: string | null;
+    amount: Prisma.Decimal;
+    currency: string;
+    buildingId: string;
+    anchorDay: number;
+    startsAt: Date;
+    endsAt: Date | null;
+  },
+) => {
+  const apartmentIds = await getActiveEnrollmentApartmentIds(tx, series.id);
+
+  if (apartmentIds.length === 0) {
+    return;
+  }
+
+  const now = new Date();
+  const upperBound = series.endsAt && series.endsAt < now ? series.endsAt : now;
+
+  if (series.startsAt > upperBound) {
+    return;
+  }
+
+  const existingPayments = await tx.payment.findMany({
+    where: {
+      recurringSeriesId: series.id,
+      dueAt: {
+        lte: upperBound,
+      },
+    },
+    select: {
+      id: true,
+      dueAt: true,
+    },
+    orderBy: {
+      dueAt: "asc",
+    },
+  });
+
+  const existingByDueKey = new Map<string, string>();
+  existingPayments.forEach((payment) => {
+    existingByDueKey.set(payment.dueAt.toISOString(), payment.id);
+  });
+
+  const targetDueDates: Date[] = [];
+  let cursor = new Date(series.startsAt);
+
+  while (cursor <= upperBound) {
+    targetDueDates.push(new Date(cursor));
+    cursor = getNextMonthlyDate(series.anchorDay, cursor, series.startsAt);
+  }
+
+  for (const dueAt of targetDueDates) {
+    const dueKey = dueAt.toISOString();
+    let paymentId = existingByDueKey.get(dueKey);
+
+    if (!paymentId) {
+      const createdPayment = await tx.payment.create({
+        data: {
+          title: series.title,
+          description: series.description,
+          amount: series.amount,
+          currency: series.currency,
+          dueAt,
+          buildingId: series.buildingId,
+          isRecurring: true,
+          recurringSeriesId: series.id,
+        },
+        select: { id: true },
+      });
+
+      paymentId = createdPayment.id;
+      existingByDueKey.set(dueKey, paymentId);
+    }
+
+    for (const apartmentId of apartmentIds) {
+      await ensureAssignmentForApartment(tx, paymentId, apartmentId);
+    }
+  }
+};
+
 export const createPayment = async (
   currentUser: SessionPayload,
   data: CreatePaymentCommand,
@@ -150,6 +319,13 @@ export const createPayment = async (
 
     return createdPayment;
   });
+
+  // Fire-and-forget notification
+  notifyNewPayment(
+    data.buildingId,
+    payment.id,
+    payment.title,
+  );
 
   return { payment };
 };
@@ -538,6 +714,17 @@ export const deletePayment = async (
     throw new HttpError("אסור", 403);
   }
 
+  const paidAssignmentsCount = await prisma.paymentAssignment.count({
+    where: {
+      paymentId,
+      status: PaymentStatus.PAID,
+    },
+  });
+
+  if (paidAssignmentsCount > 0) {
+    throw new HttpError("לא ניתן למחוק חיוב שיש עבורו תשלומים שבוצעו", 400);
+  }
+
   return prisma.payment.delete({ where: { id: paymentId } });
 };
 
@@ -586,9 +773,11 @@ export const getMyPayments = async (
     throw new HttpError("נדרש הקשר דירה", 400);
   }
 
+  const apartmentId = currentUser.apartmentId;
+
   return prisma.paymentAssignment.findMany({
     where: {
-      apartmentId: currentUser.apartmentId,
+      apartmentId,
       ...(status ? { status } : {}),
       ...(filter === "overdue"
         ? {
@@ -1061,7 +1250,11 @@ export const handleRecurringChargeSucceeded = async (charge: {
       });
 
       const apartments = await tx.apartment.findMany({
-        where: { buildingId: enrollment.series.buildingId },
+        where: {
+          id: {
+            in: await getActiveEnrollmentApartmentIds(tx, enrollment.seriesId),
+          },
+        },
         select: { id: true },
       });
 
@@ -1329,7 +1522,11 @@ export const createRecurringSeries = async (
     });
 
     const apartments = await tx.apartment.findMany({
-      where: { buildingId: data.buildingId },
+      where: {
+        id: {
+          in: await getActiveEnrollmentApartmentIds(tx, createdSeries.id),
+        },
+      },
       select: { id: true },
     });
 
@@ -1411,15 +1608,85 @@ export const updateRecurringSeries = async (
     throw new HttpError("תאריך סיום חייב להיות אחרי תאריך ההתחלה", 400);
   }
 
-  return prisma.recurringPaymentSeries.update({
+  return prisma.$transaction(async (tx) => {
+    const updatedSeries = await tx.recurringPaymentSeries.update({
+      where: { id: seriesId },
+      data: {
+        title: data.title,
+        description: data.description,
+        amount: data.amount ? new Prisma.Decimal(data.amount) : undefined,
+        endsAt: data.endsAt === null ? null : data.endsAt,
+        status: data.status,
+      },
+    });
+
+    const nextStatus = data.status ?? series.status;
+    const hasStatusChanged = data.status && data.status !== series.status;
+
+    if (hasStatusChanged && nextStatus === RecurringSeriesStatus.PAUSED) {
+      await removeUnpaidRecurringPaymentsForSeries(tx, seriesId);
+    }
+
+    if (hasStatusChanged && nextStatus === RecurringSeriesStatus.ENDED) {
+      await removeUnpaidRecurringPaymentsForSeries(tx, seriesId);
+      await tx.recurringPaymentEnrollment.updateMany({
+        where: { seriesId },
+        data: {
+          status: RecurringEnrollmentStatus.CANCELED,
+          nextBillingAt: null,
+        },
+      });
+    }
+
+    if (
+      series.status === RecurringSeriesStatus.PAUSED &&
+      nextStatus === RecurringSeriesStatus.ACTIVE
+    ) {
+      await rebuildMissingRecurringPaymentsForSeries(tx, {
+        id: updatedSeries.id,
+        title: updatedSeries.title,
+        description: updatedSeries.description,
+        amount: updatedSeries.amount,
+        currency: updatedSeries.currency,
+        buildingId: updatedSeries.buildingId,
+        anchorDay: updatedSeries.anchorDay,
+        startsAt: updatedSeries.startsAt,
+        endsAt: updatedSeries.endsAt,
+      });
+    }
+
+    return updatedSeries;
+  });
+};
+
+export const deleteRecurringSeries = async (
+  currentUser: SessionPayload,
+  seriesId: string,
+) => {
+  const series = await prisma.recurringPaymentSeries.findUnique({
     where: { id: seriesId },
-    data: {
-      title: data.title,
-      description: data.description,
-      amount: data.amount ? new Prisma.Decimal(data.amount) : undefined,
-      endsAt: data.endsAt === null ? null : data.endsAt,
-      status: data.status,
-    },
+  });
+
+  if (!series) {
+    throw new HttpError("סדרת חיובים לא נמצאה", 404);
+  }
+
+  await ensureBuildingAccess(currentUser, series.buildingId);
+
+  return prisma.$transaction(async (tx) => {
+    await removeUnpaidRecurringPaymentsForSeries(tx, seriesId);
+
+    await tx.recurringPaymentEnrollment.updateMany({
+      where: { seriesId },
+      data: {
+        status: RecurringEnrollmentStatus.CANCELED,
+        nextBillingAt: null,
+      },
+    });
+
+    return tx.recurringPaymentSeries.delete({
+      where: { id: seriesId },
+    });
   });
 };
 
@@ -1470,6 +1737,8 @@ export const setMyRecurringEnrollment = async (
     throw new HttpError("נדרש הקשר דירה", 400);
   }
 
+  const apartmentId = currentUser.apartmentId;
+
   const series = await prisma.recurringPaymentSeries.findUnique({
     where: { id: seriesId },
   });
@@ -1479,7 +1748,7 @@ export const setMyRecurringEnrollment = async (
   }
 
   const apartment = await prisma.apartment.findUnique({
-    where: { id: currentUser.apartmentId },
+    where: { id: apartmentId },
     select: { buildingId: true },
   });
 
@@ -1495,27 +1764,61 @@ export const setMyRecurringEnrollment = async (
     ? RecurringEnrollmentStatus.ACTIVE
     : RecurringEnrollmentStatus.CANCELED;
 
-  return prisma.recurringPaymentEnrollment.upsert({
-    where: {
-      seriesId_apartmentId: {
-        seriesId,
-        apartmentId: currentUser.apartmentId,
+  return prisma.$transaction(async (tx) => {
+    const enrollment = await tx.recurringPaymentEnrollment.upsert({
+      where: {
+        seriesId_apartmentId: {
+          seriesId,
+          apartmentId,
+        },
       },
-    },
-    create: {
-      seriesId,
-      apartmentId: currentUser.apartmentId,
-      residentId: currentUser.userId,
-      status,
-      autoPayEnabledAt: data.enabled ? new Date() : null,
-    },
-    update: {
-      residentId: currentUser.userId,
-      status,
-      autoPayEnabledAt: data.enabled ? new Date() : null,
-      providerCustomerId: data.enabled ? undefined : null,
-      providerSubscriptionId: data.enabled ? undefined : null,
-      nextBillingAt: data.enabled ? undefined : null,
-    },
+      create: {
+        seriesId,
+        apartmentId,
+        residentId: currentUser.userId,
+        status,
+        autoPayEnabledAt: data.enabled ? new Date() : null,
+      },
+      update: {
+        residentId: currentUser.userId,
+        status,
+        autoPayEnabledAt: data.enabled ? new Date() : null,
+        providerCustomerId: data.enabled ? undefined : null,
+        providerSubscriptionId: data.enabled ? undefined : null,
+        nextBillingAt: data.enabled ? undefined : null,
+      },
+    });
+
+    if (data.enabled) {
+      const currentCyclePayment = await tx.payment.findFirst({
+        where: {
+          recurringSeriesId: seriesId,
+          isRecurring: true,
+        },
+        orderBy: [{ dueAt: "desc" }],
+        select: { id: true },
+      });
+
+      if (currentCyclePayment) {
+        await ensureAssignmentForApartment(
+          tx,
+          currentCyclePayment.id,
+          apartmentId,
+        );
+      }
+    } else {
+      await tx.paymentAssignment.deleteMany({
+        where: {
+          apartmentId,
+          status: PaymentStatus.PENDING,
+          payment: {
+            recurringSeriesId: seriesId,
+            isRecurring: true,
+          },
+        },
+      });
+    }
+
+    return enrollment;
   });
 };

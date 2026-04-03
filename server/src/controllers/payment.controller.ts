@@ -69,6 +69,18 @@ export const updateRecurringSeries = async (req: Request, res: Response) => {
   });
 };
 
+export const deleteRecurringSeries = async (req: Request, res: Response) => {
+  const series = await paymentService.deleteRecurringSeries(
+    req.user,
+    req.params.seriesId as string,
+  );
+
+  res.json({
+    message: "Recurring payment series deleted successfully",
+    series,
+  });
+};
+
 export const getMyRecurringSeries = async (req: Request, res: Response) => {
   const series = await paymentService.getMyRecurringSeries(req.user);
 

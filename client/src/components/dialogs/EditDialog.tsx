@@ -1,3 +1,4 @@
+import { Row } from '@components/containers';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
 import { FormEventHandler, ReactNode } from 'react';
 
@@ -11,6 +12,7 @@ interface EditDialogProps {
   submitLabel?: string;
   cancelLabel?: string;
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg';
+  leadingActions?: ReactNode;
 }
 
 export const EditDialog = ({
@@ -23,6 +25,7 @@ export const EditDialog = ({
   submitLabel = 'שמירה',
   cancelLabel = 'ביטול',
   maxWidth = 'sm',
+  leadingActions,
 }: EditDialogProps) => (
   <Dialog open={open} onClose={isSubmitting ? undefined : onClose} fullWidth maxWidth={maxWidth}>
     <DialogTitle>{title}</DialogTitle>
@@ -32,12 +35,17 @@ export const EditDialog = ({
       </form>
     </DialogContent>
     <DialogActions>
-      <Button onClick={onClose} disabled={isSubmitting}>
-        {cancelLabel}
-      </Button>
-      <Button type="submit" form="edit-dialog-form" variant="contained" disabled={isSubmitting}>
-        {submitLabel}
-      </Button>
+      <Row sx={{ width: '100%', justifyContent: 'space-between' }}>
+        {leadingActions}
+        <Row>
+          <Button onClick={onClose} disabled={isSubmitting}>
+            {cancelLabel}
+          </Button>
+          <Button type="submit" form="edit-dialog-form" variant="contained" disabled={isSubmitting}>
+            {submitLabel}
+          </Button>
+        </Row>
+      </Row>
     </DialogActions>
   </Dialog>
 );

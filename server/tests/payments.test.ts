@@ -229,6 +229,60 @@ describe("Payment routes", () => {
       where: { recurringSeriesId: res.body.series.id },
     });
     expect(linkedPayment).toBeTruthy();
+
+    const assignmentsCount = await prisma.paymentAssignment.count({
+      where: { paymentId: linkedPayment!.id },
+    });
+    expect(assignmentsCount).toBe(0);
+  });
+
+  it("resident enrollment creates assignment for recurring cycle", async () => {
+    const { managerUser, residentUser, building, apartment } =
+      await createBasicContext();
+    const managerToken = signToken({
+      userId: managerUser.id,
+      sessionType: SessionType.MANAGER,
+      buildingId: building.id,
+    });
+
+    const createSeriesRes = await request(app)
+      .post("/api/payments/recurring-series")
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({
+        title: "Recurring Enrollment Assignment",
+        amount: 95,
+        buildingId: building.id,
+        cadence: "MONTHLY",
+        anchorDay: 10,
+        createInitialPayment: true,
+      });
+
+    const residentToken = signToken({
+      userId: residentUser.id,
+      sessionType: SessionType.RESIDENT,
+      buildingId: building.id,
+      apartmentId: apartment.id,
+    });
+
+    const enrollRes = await request(app)
+      .post(
+        `/api/payments/my/recurring-series/${createSeriesRes.body.series.id}/enrollment`,
+      )
+      .set("Authorization", `Bearer ${residentToken}`)
+      .send({ enabled: true });
+
+    expect(enrollRes.status).toBe(200);
+
+    const assignment = await prisma.paymentAssignment.findFirst({
+      where: {
+        apartmentId: apartment.id,
+        payment: {
+          recurringSeriesId: createSeriesRes.body.series.id,
+        },
+      },
+    });
+
+    expect(assignment).toBeTruthy();
   });
 
   it("resident can enable recurring enrollment", async () => {
@@ -720,6 +774,195 @@ describe("Payment routes", () => {
     expect(res.status).toBe(200);
   });
 
+  it("manager cannot delete payment with paid assignment", async () => {
+    const { managerUser, building, apartment } = await createBasicContext();
+    const token = signToken({
+      userId: managerUser.id,
+      sessionType: SessionType.MANAGER,
+      buildingId: building.id,
+    });
+
+    const payment = await createPayment(building.id);
+    await prisma.paymentAssignment.create({
+      data: {
+        paymentId: payment.id,
+        apartmentId: apartment.id,
+        status: "PAID",
+        paidAt: new Date(),
+      },
+    });
+
+    const res = await request(app)
+      .delete(`/api/payments/${payment.id}`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("manager can delete recurring series and keep paid history only", async () => {
+    const { managerUser, building, apartment } = await createBasicContext();
+    const token = signToken({
+      userId: managerUser.id,
+      sessionType: SessionType.MANAGER,
+      buildingId: building.id,
+    });
+
+    const series = await prisma.recurringPaymentSeries.create({
+      data: {
+        title: "Series Delete",
+        amount: new Prisma.Decimal(120),
+        currency: "ILS",
+        buildingId: building.id,
+        createdById: managerUser.id,
+        cadence: "MONTHLY",
+        anchorDay: 10,
+      },
+    });
+
+    const paidPayment = await prisma.payment.create({
+      data: {
+        title: "Paid recurring",
+        amount: new Prisma.Decimal(120),
+        currency: "ILS",
+        dueAt: new Date(),
+        buildingId: building.id,
+        isRecurring: true,
+        recurringSeriesId: series.id,
+      },
+    });
+
+    const unpaidPayment = await prisma.payment.create({
+      data: {
+        title: "Unpaid recurring",
+        amount: new Prisma.Decimal(120),
+        currency: "ILS",
+        dueAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
+        buildingId: building.id,
+        isRecurring: true,
+        recurringSeriesId: series.id,
+      },
+    });
+
+    await prisma.paymentAssignment.createMany({
+      data: [
+        {
+          paymentId: paidPayment.id,
+          apartmentId: apartment.id,
+          status: "PAID",
+          paidAt: new Date(),
+        },
+        {
+          paymentId: unpaidPayment.id,
+          apartmentId: apartment.id,
+          status: "PENDING",
+        },
+      ],
+    });
+
+    const res = await request(app)
+      .delete(`/api/payments/recurring-series/${series.id}`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+
+    const deletedSeries = await prisma.recurringPaymentSeries.findUnique({
+      where: { id: series.id },
+    });
+    expect(deletedSeries).toBeNull();
+
+    const existingPaidPayment = await prisma.payment.findUnique({
+      where: { id: paidPayment.id },
+    });
+    expect(existingPaidPayment).toBeTruthy();
+    expect(existingPaidPayment?.recurringSeriesId).toBeNull();
+
+    const deletedUnpaidPayment = await prisma.payment.findUnique({
+      where: { id: unpaidPayment.id },
+    });
+    expect(deletedUnpaidPayment).toBeNull();
+  });
+
+  it("pause removes unpaid recurring and resume rebuilds", async () => {
+    const { managerUser, residentUser, building, apartment } =
+      await createBasicContext();
+    const managerToken = signToken({
+      userId: managerUser.id,
+      sessionType: SessionType.MANAGER,
+      buildingId: building.id,
+    });
+
+    const startsAt = new Date();
+    startsAt.setUTCMonth(startsAt.getUTCMonth() - 2);
+
+    const series = await prisma.recurringPaymentSeries.create({
+      data: {
+        title: "Pause Resume",
+        amount: new Prisma.Decimal(80),
+        currency: "ILS",
+        buildingId: building.id,
+        createdById: managerUser.id,
+        cadence: "MONTHLY",
+        anchorDay: 10,
+        startsAt,
+        status: "ACTIVE",
+      },
+    });
+
+    await prisma.recurringPaymentEnrollment.create({
+      data: {
+        seriesId: series.id,
+        apartmentId: apartment.id,
+        residentId: residentUser.id,
+        status: "ACTIVE",
+      },
+    });
+
+    const payment = await prisma.payment.create({
+      data: {
+        title: "Cycle",
+        amount: new Prisma.Decimal(80),
+        currency: "ILS",
+        dueAt: startsAt,
+        buildingId: building.id,
+        isRecurring: true,
+        recurringSeriesId: series.id,
+      },
+    });
+
+    await prisma.paymentAssignment.create({
+      data: {
+        paymentId: payment.id,
+        apartmentId: apartment.id,
+        status: "PENDING",
+      },
+    });
+
+    const pauseRes = await request(app)
+      .patch(`/api/payments/recurring-series/${series.id}`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({ status: "PAUSED" });
+    expect(pauseRes.status).toBe(200);
+
+    const afterPauseCount = await prisma.payment.count({
+      where: { recurringSeriesId: series.id },
+    });
+    expect(afterPauseCount).toBe(0);
+
+    const resumeRes = await request(app)
+      .patch(`/api/payments/recurring-series/${series.id}`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({ status: "ACTIVE" });
+    expect(resumeRes.status).toBe(200);
+
+    const rebuiltAssignmentsCount = await prisma.paymentAssignment.count({
+      where: {
+        apartmentId: apartment.id,
+        payment: { recurringSeriesId: series.id },
+      },
+    });
+    expect(rebuiltAssignmentsCount).toBeGreaterThan(0);
+  });
+
   it("resident cannot delete payment", async () => {
     const { residentUser, building, apartment } = await createBasicContext();
     const payment = await createPayment(building.id);
@@ -828,6 +1071,21 @@ describe("Payment routes", () => {
       });
 
     const seriesId = createSeriesRes.body.series.id;
+
+    const residentToken = signToken({
+      userId: residentUser.id,
+      sessionType: SessionType.RESIDENT,
+      buildingId: building.id,
+      apartmentId: apartment.id,
+    });
+
+    const enrollmentRes = await request(app)
+      .post(`/api/payments/my/recurring-series/${seriesId}/enrollment`)
+      .set("Authorization", `Bearer ${residentToken}`)
+      .send({ enabled: true });
+
+    expect(enrollmentRes.status).toBe(200);
+
     const payment = await prisma.payment.findFirstOrThrow({
       where: { recurringSeriesId: seriesId },
       orderBy: { createdAt: "desc" },

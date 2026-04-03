@@ -1,4 +1,5 @@
 import { IssueStatus } from '@enums/IssueStatus';
+import { ContextType } from '@enums/ContextType';
 import { Role } from '@enums/Role';
 
 export interface IssueImage {
@@ -12,6 +13,7 @@ export interface IssueCreator {
   id: string;
   name: string | null;
   role: Role;
+  contextType?: ContextType;
 }
 
 export interface Issue {

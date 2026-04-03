@@ -11,6 +11,6 @@
     "typeRoots": ["./node_modules/@types", "./src/types"],
     "types": ["node", "jest"]
   },
-  "include": ["./server.ts", "./src/**/*.ts", "./src/types/**/*.d.ts"],
+  "include": ["./server.ts", "./src/**/*.ts", "./src/types/**/*.d.ts", "./prisma/**/*.ts"],
   "exclude": ["node_modules"]
 }

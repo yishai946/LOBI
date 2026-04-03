@@ -4,6 +4,7 @@ import {
   createCheckoutSession,
   createPayAllCheckoutSession,
   createPayment,
+  deleteRecurringSeries,
   deletePayment,
   getMyRecurringSeries,
   getPublicReceipt,
@@ -46,6 +47,11 @@ router.patch(
   requireManager,
   validate(updateRecurringSeriesSchema),
   updateRecurringSeries,
+);
+router.delete(
+  "/recurring-series/:seriesId",
+  requireManager,
+  deleteRecurringSeries,
 );
 router.get("/", requireManager, getPayments);
 router.get("/my", getMyPayments);

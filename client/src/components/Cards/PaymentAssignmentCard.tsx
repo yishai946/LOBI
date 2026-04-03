@@ -51,7 +51,8 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
       : 'שולם';
 
   const { mutate: payNow, isPending: isPaying } = useMutation({
-    mutationFn: (assignmentId: string) => paymentService.createCheckoutSession(assignmentId),
+    mutationFn: ({ assignmentId, isRecurring }: { assignmentId: string; isRecurring?: boolean }) =>
+      paymentService.createCheckoutSession(assignmentId, { isRecurring }),
     onSuccess: (result) => {
       window.location.href = result.checkoutUrl;
     },
@@ -133,25 +134,57 @@ export const PaymentAssignmentCard = ({ item }: PaymentAssignmentCardProps) => {
           </Typography>
         </Column>
         {isPending ? (
-          <Button
-            variant="contained"
-            disableElevation
-            onClick={() => payNow(item.id)}
-            disabled={isPaying}
-            sx={{
-              px: 3,
-              py: 1,
-              borderRadius: 2,
-              bgcolor: isOverdue ? 'error.main' : 'primary.dark',
-              color: 'primary.contrastText',
-              fontWeight: 700,
-              '&:hover': {
-                bgcolor: 'primary.main',
-              },
-            }}
-          >
-            {isPaying ? 'מעביר לתשלום...' : 'לתשלום'}
-          </Button>
+          isRecurring ? (
+            <Column sx={{ gap: 1, alignItems: 'stretch' }}>
+              <Button
+                variant="contained"
+                disableElevation
+                onClick={() => payNow({ assignmentId: item.id, isRecurring: false })}
+                disabled={isPaying}
+                sx={{
+                  px: 2.5,
+                  py: 1,
+                  borderRadius: 2,
+                  bgcolor: isOverdue ? 'error.main' : 'primary.dark',
+                  color: 'primary.contrastText',
+                  fontWeight: 700,
+                  '&:hover': {
+                    bgcolor: 'primary.main',
+                  },
+                }}
+              >
+                {isPaying ? 'מעביר לתשלום...' : 'תשלום חד פעמי'}
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => payNow({ assignmentId: item.id, isRecurring: true })}
+                disabled={isPaying}
+                sx={{ px: 2, py: 0.75, borderRadius: 2, fontWeight: 700 }}
+              >
+                {isPaying ? 'מעביר לתשלום...' : 'חיוב אוטומטי חודשי'}
+              </Button>
+            </Column>
+          ) : (
+            <Button
+              variant="contained"
+              disableElevation
+              onClick={() => payNow({ assignmentId: item.id })}
+              disabled={isPaying}
+              sx={{
+                px: 3,
+                py: 1,
+                borderRadius: 2,
+                bgcolor: isOverdue ? 'error.main' : 'primary.dark',
+                color: 'primary.contrastText',
+                fontWeight: 700,
+                '&:hover': {
+                  bgcolor: 'primary.main',
+                },
+              }}
+            >
+              {isPaying ? 'מעביר לתשלום...' : 'לתשלום'}
+            </Button>
+          )
         ) : (
           <Button
             variant="outlined"
