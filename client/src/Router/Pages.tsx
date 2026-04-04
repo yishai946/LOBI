@@ -1,5 +1,6 @@
 import { ContextType } from '@enums/ContextType';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded';
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded';
 import IssuesRoundedIcon from '@mui/icons-material/WarningRounded';
 import MessagesRoundedIcon from '@mui/icons-material/MarkunreadRounded';
@@ -54,6 +55,14 @@ const NotFoundPage = lazy(() =>
 );
 const NotificationSettingsPage = lazy(() =>
   import('@pages/NotificationSettings').then((module) => ({ default: module.NotificationSettings }))
+);
+const ResidentsApartmentsPage = lazy(() =>
+  import('@pages/ResidentsApartments').then((module) => ({
+    default: module.ResidentsApartmentsPage,
+  }))
+);
+const UpgradePage = lazy(() =>
+  import('@pages/Upgrade').then((module) => ({ default: module.UpgradePage }))
 );
 
 export interface PageDefinition {
@@ -146,6 +155,16 @@ const Pages: PageDefinition[] = [
     requireContext: true,
   },
   {
+    path: '/residents-apartments',
+    element: <ResidentsApartmentsPage />,
+    title: 'דיירים ודירות',
+    icon: <ApartmentRoundedIcon />,
+    isVisibleInMenu: true,
+    isProtected: true,
+    requireContext: true,
+    allowedRoles: [ContextType.MANAGER, ContextType.ADMIN],
+  },
+  {
     path: '/login',
     element: <LoginPage />,
     isVisibleInMenu: false,
@@ -181,6 +200,13 @@ const Pages: PageDefinition[] = [
   {
     path: '/settings/notifications',
     element: <NotificationSettingsPage />,
+    isVisibleInMenu: false,
+    isProtected: true,
+    requireContext: true,
+  },
+  {
+    path: '/upgrade',
+    element: <UpgradePage />,
     isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,

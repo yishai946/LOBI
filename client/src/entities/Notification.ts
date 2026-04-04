@@ -2,7 +2,8 @@ export type NotificationType =
   | 'NEW_MESSAGE'
   | 'ISSUE_STATUS_CHANGED'
   | 'NEW_PAYMENT'
-  | 'PAYMENT_REMINDER';
+  | 'PAYMENT_REMINDER'
+  | 'UPGRADE_REQUEST';
 
 export interface Notification {
   id: string;

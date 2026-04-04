@@ -4,6 +4,7 @@ import logger from "../utils/logger";
 import { HttpError } from "../utils/HttpError";
 import { SessionType } from "../enums/sessionType.enum";
 import { sessionInitializers } from "../helpers/auth.helper";
+import { getBuildingAccountTier } from "./account.service";
 
 const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
@@ -158,6 +159,32 @@ export const generateAccessToken = async (userId: string) => {
     throw new HttpError("המשתמש לא נמצא", 404);
   }
 
+  // Fetch account tiers for all buildings
+  const residentContexts = await Promise.all(
+    user.apartments.map(async (a) => {
+      const tier = await getBuildingAccountTier(a.apartment.buildingId);
+      return {
+        type: "RESIDENT",
+        apartmentId: a.apartment.id,
+        buildingId: a.apartment.buildingId,
+        buildingName: a.apartment.building.name,
+        buildingTier: tier,
+      };
+    }),
+  );
+
+  const managerContexts = await Promise.all(
+    user.manages.map(async (m) => {
+      const tier = await getBuildingAccountTier(m.building.id);
+      return {
+        type: "MANAGER",
+        buildingId: m.building.id,
+        buildingName: m.building.name,
+        buildingTier: tier,
+      };
+    }),
+  );
+
   const contexts = [
     ...(user.role === "ADMIN"
       ? [
@@ -166,17 +193,8 @@ export const generateAccessToken = async (userId: string) => {
           },
         ]
       : []),
-    ...user.apartments.map((a) => ({
-      type: "RESIDENT",
-      apartmentId: a.apartment.id,
-      buildingId: a.apartment.buildingId,
-      buildingName: a.apartment.building.name,
-    })),
-    ...user.manages.map((m) => ({
-      type: "MANAGER",
-      buildingId: m.building.id,
-      buildingName: m.building.name,
-    })),
+    ...residentContexts,
+    ...managerContexts,
   ];
 
   const payload = {

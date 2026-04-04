@@ -1,13 +1,17 @@
-import { PaymentFilterParam, RecurringSeries, paymentService } from '@api/paymentService';
+import { buildingService } from '@api/buildingService';
+import { PaymentFilterParam, paymentService } from '@api/paymentService';
 import Banner from '@components/Banner';
 import { PaymentAssignmentCard } from '@components/Cards/PaymentAssignmentCard';
 import { CardList, Column } from '@components/containers';
 import { ContextType } from '@enums/ContextType';
-import { Box, Button, Chip, Divider, Typography } from '@mui/material';
+import { Dialog, DialogActions, DialogContent, DialogTitle, Button, Divider } from '@mui/material';
 import { useAuth } from '@providers/AuthContext';
+import { useGlobalMessage } from '@providers/MessageProvider';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { ManagerPaymentsPage } from './ManagerPaymentsPage';
+import { UpgradeRequestCard } from './components/UpgradeRequestCard';
+import { RecurringSeriesEnrollmentPanel } from './components/RecurringSeriesEnrollmentPanel';
 
 const formatCurrency = (amount: number, currency: string): string =>
   new Intl.NumberFormat('he-IL', {
@@ -18,13 +22,21 @@ const formatCurrency = (amount: number, currency: string): string =>
 
 const ResidentPaymentsPage = () => {
   const queryClient = useQueryClient();
+  const { currentContext } = useAuth();
+  const { showError, showSuccess } = useGlobalMessage();
+
+  // State
   const [activeFilter, setActiveFilter] = useState<PaymentFilterParam>('all');
   const [activeSort, setActiveSort] = useState('dueDesc');
   const [activePage, setActivePage] = useState(1);
   const [activePageSize, setActivePageSize] = useState(3);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [hasRequestedUpgrade, setHasRequestedUpgrade] = useState(false);
 
+  const isFreeTier = currentContext?.buildingTier === 'FREE';
   const sortParam = activeSort === 'dueAsc' ? 'old' : 'new';
 
+  // Queries
   const { data: allPayments = [], isLoading: isAllPaymentsLoading } = useQuery({
     queryKey: ['payments', 'my', 'list', activeFilter, sortParam],
     queryFn: () =>
@@ -50,10 +62,14 @@ const ResidentPaymentsPage = () => {
     queryFn: () => paymentService.getMyRecurringSeries(),
   });
 
+  // Mutations
   const { mutate: payAllNow, isPending: isRedirectingToCheckout } = useMutation({
     mutationFn: () => paymentService.createPayAllCheckoutSession(),
     onSuccess: (result) => {
       window.location.href = result.checkoutUrl;
+    },
+    onError: (error: any) => {
+      showError(error?.response?.data?.message || 'לא ניתן ליצור הזמנה לתשלום');
     },
   });
 
@@ -65,10 +81,27 @@ const ResidentPaymentsPage = () => {
       queryClient.invalidateQueries({ queryKey: ['payments', 'my', 'list'] });
       queryClient.invalidateQueries({ queryKey: ['payments', 'my', 'list', 'pending', 'old'] });
     },
+    onError: (error: any) => {
+      showError(error?.response?.data?.message || 'לא ניתן לעדכן הנדון');
+    },
   });
 
-  const getEnrollment = (series: RecurringSeries) => series.enrollments?.[0] || null;
+  const { mutate: requestUpgrade, isPending: isRequestingUpgrade } = useMutation({
+    mutationFn: () => buildingService.requestUpgrade('DIGITAL_PAYMENTS'),
+    onSuccess: () => {
+      setHasRequestedUpgrade(true);
+      showSuccess('בקשת השדרוג נשלחה בהצלחה');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || 'לא ניתן לשלוח בקשת שדרוג';
+      if (error?.response?.status === 429) {
+        setHasRequestedUpgrade(true);
+      }
+      showError(message);
+    },
+  });
 
+  // Computed values
   const totalPendingAmount = useMemo(
     () =>
       allPendingPayments.reduce(
@@ -79,131 +112,48 @@ const ResidentPaymentsPage = () => {
   );
 
   const currencyCode = allPendingPayments[0]?.payment.currency || 'ILS';
-
+  const formattedTotalPendingAmount = formatCurrency(totalPendingAmount, currencyCode);
   const start = (activePage - 1) * activePageSize;
   const pagedPayments = allPayments.slice(start, start + activePageSize);
-  const formattedTotalPendingAmount = formatCurrency(totalPendingAmount, currencyCode);
 
   return (
     <Column>
       <Banner
         title={formattedTotalPendingAmount}
-        subtitle='סה"כ הכל לתשלום'
+        subtitle='סה"כ לתשלום'
         caption={
           totalPendingAmount > 0
-            ? 'לחץ על כפתור "שלם עכשיו" כדי לשלם את כל התשלומים הממתינים'
-            : 'אין תשלומים ממתינים לתשלום.'
+            ? 'אתה יכול ללחוץ על "שלם הכל" כדי לשלם את הכל בדרך בטוחה ומהירה'
+            : 'אין לך עדיין כל תשלומים עתידיים.'
         }
         isLoading={isTotalPaymentLoading}
-        buttonLabel="שלם עכשיו"
-        onButtonClick={totalPendingAmount > 0 ? payAllNow : undefined}
+        buttonLabel={isFreeTier ? 'בקש השדרוג' : 'שלם הכל'}
+        onButtonClick={
+          isFreeTier
+            ? () => setIsUpgradeModalOpen(true)
+            : totalPendingAmount > 0
+              ? payAllNow
+              : undefined
+        }
         isActionLoading={isRedirectingToCheckout}
       />
-      <Column
-        sx={{
-          mb: 2,
-          p: 2,
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-          gap: 1.5,
-        }}
-      >
-        <Typography variant="h6" sx={{ fontWeight: 800 }}>
-          תשלומים קבועים
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          הפעל חיוב אוטומטי פעם אחת, והמערכת תטפל בהמשך התשלומים החודשיים עבורך.
-        </Typography>
 
-        {isRecurringSeriesLoading ? (
-          <Typography variant="body2" color="text.secondary">
-            טוען סדרות חיוב...
-          </Typography>
-        ) : recurringSeries.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            אין כרגע סדרות חיוב קבועות זמינות עבורך.
-          </Typography>
-        ) : (
-          <Column sx={{ gap: 1 }}>
-            {recurringSeries.map((series) => {
-              const enrollment = getEnrollment(series);
-              const isActive = enrollment?.status === 'ACTIVE';
-              const nextBillingText = enrollment?.nextBillingAt
-                ? new Date(enrollment.nextBillingAt).toLocaleDateString('he-IL')
-                : null;
-              const lastChargedText = enrollment?.lastChargedAt
-                ? new Date(enrollment.lastChargedAt).toLocaleDateString('he-IL')
-                : null;
+      {isFreeTier && (
+        <UpgradeRequestCard
+          onRequestUpgrade={() => setIsUpgradeModalOpen(true)}
+          hasRequested={hasRequestedUpgrade}
+          isRequesting={isRequestingUpgrade}
+        />
+      )}
 
-              return (
-                <Box
-                  key={series.id}
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: 'background.default',
-                  }}
-                >
-                  <Column sx={{ gap: 1 }}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 1,
-                      }}
-                    >
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                        {series.title}
-                      </Typography>
-                      <Chip
-                        size="small"
-                        label={isActive ? 'חיוב אוטומטי פעיל' : 'חיוב אוטומטי כבוי'}
-                        color={isActive ? 'success' : 'default'}
-                      />
-                    </Box>
-
-                    {series.description && (
-                      <Typography variant="body2" color="text.secondary">
-                        {series.description}
-                      </Typography>
-                    )}
-
-                    <Typography variant="body2" color="text.secondary">
-                      תאריך חיוב חודשי: יום {series.anchorDay}
-                    </Typography>
-
-                    {nextBillingText && (
-                      <Typography variant="body2" color="text.secondary">
-                        חיוב הבא: {nextBillingText}
-                      </Typography>
-                    )}
-
-                    {lastChargedText && (
-                      <Typography variant="body2" color="text.secondary">
-                        חיוב אחרון: {lastChargedText}
-                      </Typography>
-                    )}
-
-                    <Button
-                      variant={isActive ? 'outlined' : 'contained'}
-                      onClick={() => setEnrollment({ seriesId: series.id, enabled: !isActive })}
-                      disabled={isUpdatingEnrollment || series.status === 'ENDED'}
-                      sx={{ alignSelf: 'flex-start' }}
-                    >
-                      {isActive ? 'כבה חיוב אוטומטי' : 'הפעל חיוב אוטומטי'}
-                    </Button>
-                  </Column>
-                </Box>
-              );
-            })}
-          </Column>
-        )}
-      </Column>
+      <RecurringSeriesEnrollmentPanel
+        recurringSeries={recurringSeries}
+        isLoading={isRecurringSeriesLoading}
+        isUpdating={isUpdatingEnrollment}
+        isFreeTier={isFreeTier}
+        onEnrollmentChange={(seriesId, enabled) => setEnrollment({ seriesId, enabled })}
+        onUpgradeClick={() => setIsUpgradeModalOpen(true)}
+      />
 
       <Divider sx={{ mb: 2 }} />
 
@@ -212,17 +162,17 @@ const ResidentPaymentsPage = () => {
         items={pagedPayments}
         isLoading={isAllPaymentsLoading}
         title="תשלומים"
-        emptyMessage="אין תשלומים להצגה."
+        emptyMessage="אין לך תשלומים עדיין."
         filterConfig={{
           label: 'סינון',
           value: activeFilter,
           options: [
             { label: 'הכל', value: 'all' },
-            { label: 'ממתינים', value: 'pending' },
-            { label: 'שולמו', value: 'paid' },
-            { label: 'באיחור', value: 'overdue' },
-            { label: 'עתידיים', value: 'upcoming' },
-            { label: 'שולמו ב-30 ימים אחרונים', value: 'recentPaid' },
+            { label: 'בהמתנה', value: 'pending' },
+            { label: 'שולם', value: 'paid' },
+            { label: 'איחור', value: 'overdue' },
+            { label: 'קרוב', value: 'upcoming' },
+            { label: 'שולם ב-30 יום האחרונים', value: 'recentPaid' },
           ],
           onChange: (value) => {
             setActiveFilter(value as PaymentFilterParam);
@@ -230,7 +180,7 @@ const ResidentPaymentsPage = () => {
           },
         }}
         sortConfig={{
-          label: 'מיון',
+          label: 'סדר',
           variant: 'direction-toggle',
           value: activeSort,
           ascValue: 'dueAsc',
@@ -252,6 +202,24 @@ const ResidentPaymentsPage = () => {
           pageSizeOptions: [2, 3, 5, 10],
         }}
       />
+
+      <Dialog open={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)}>
+        <DialogTitle>בקשת שדרוג - תשלומים דיגיטליים</DialogTitle>
+        <DialogContent>
+          כדי להשתמש בתשלומים דיגיטליים, אנא בקש מהמנהל שלך לשדרג את הבניין ל-Pro. זה יאפשר לך לשלם
+          בקלות עם Bit וכרטיס אשראי.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsUpgradeModalOpen(false)}>סגור</Button>
+          <Button
+            variant="contained"
+            onClick={() => requestUpgrade()}
+            disabled={hasRequestedUpgrade || isRequestingUpgrade}
+          >
+            {hasRequestedUpgrade ? 'בקשה נשלחה' : 'שלח בקשה'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Column>
   );
 };

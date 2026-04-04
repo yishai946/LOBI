@@ -3,6 +3,7 @@ import {
   createRecurringSeries,
   createCheckoutSession,
   createPayAllCheckoutSession,
+  createPaymentProofUploadUrl,
   createPayment,
   deleteRecurringSeries,
   deletePayment,
@@ -15,6 +16,8 @@ import {
   getMyPayments,
   getPayments,
   paymentWebhook,
+  attachPaymentProof,
+  approvePaymentProof,
   setMyRecurringEnrollment,
   updateRecurringSeries,
   updatePayment,
@@ -25,6 +28,8 @@ import {
   checkoutPaymentSchema,
   createRecurringSeriesSchema,
   createPaymentSchema,
+  paymentProofAttachSchema,
+  paymentProofUploadSchema,
   setRecurringEnrollmentSchema,
   updateRecurringSeriesSchema,
   updatePaymentSchema,
@@ -61,6 +66,21 @@ router.post(
   "/my/recurring-series/:seriesId/enrollment",
   validate(setRecurringEnrollmentSchema),
   setMyRecurringEnrollment,
+);
+router.post(
+  "/assignments/:assignmentId/proof-urls",
+  validate(paymentProofUploadSchema),
+  createPaymentProofUploadUrl,
+);
+router.post(
+  "/assignments/:assignmentId/proof",
+  validate(paymentProofAttachSchema),
+  attachPaymentProof,
+);
+router.post(
+  "/assignments/:assignmentId/approve",
+  requireManager,
+  approvePaymentProof,
 );
 router.get("/:paymentId/assignments", requireManager, getPaymentAssignments);
 router.get("/:paymentId", requireManager, getPaymentById);

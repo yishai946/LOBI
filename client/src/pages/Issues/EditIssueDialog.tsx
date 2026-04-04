@@ -3,9 +3,9 @@ import { EditDialog } from '@components/dialogs';
 import { Issue } from '@entities/Issue';
 import { useGlobalMessage } from '@providers/MessageProvider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { getErrorMessage } from '@utils/errorHandling';
 import { IssueForm, type IssueFormValues } from './IssueForm';
 
 interface EditIssueDialogProps {
@@ -13,19 +13,6 @@ interface EditIssueDialogProps {
   issue: Issue;
   onClose: () => void;
 }
-
-const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof AxiosError) {
-    const message = error.response?.data?.message;
-    return typeof message === 'string' ? message : fallback;
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-};
 
 export const EditIssueDialog = ({ open, issue, onClose }: EditIssueDialogProps) => {
   const queryClient = useQueryClient();

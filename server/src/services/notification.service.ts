@@ -77,6 +77,68 @@ export const createBulkNotifications = async (
   }
 };
 
+const createInAppNotification = async (
+  data: CreateNotificationData,
+): Promise<void> => {
+  try {
+    await prisma.notification.create({ data });
+    emitToUser(data.userId, "NEW_NOTIFICATION", {
+      type: data.type,
+      title: data.title,
+    });
+  } catch {
+    // Notification creation should never block the primary operation
+  }
+};
+
+export const upsertDailyUpgradeRequestNotifications = async (
+  buildingId: string,
+  totalRequests: number,
+) => {
+  const managers = await prisma.manager.findMany({
+    where: { buildingId },
+    select: { userId: true },
+  });
+
+  if (managers.length === 0) return;
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const title = `‏${totalRequests} דיירים ביקשו תשלום דיגיטלי`;
+  const body = "שדרגו ל-Pro כדי לאפשר Bit וכרטיסי אשראי.";
+
+  await Promise.all(
+    managers.map(async (manager) => {
+      const existing = await prisma.notification.findFirst({
+        where: {
+          userId: manager.userId,
+          buildingId,
+          type: NotificationType.UPGRADE_REQUEST,
+          createdAt: { gte: todayStart },
+        },
+      });
+
+      if (existing) {
+        await prisma.notification.update({
+          where: { id: existing.id },
+          data: { title, body },
+        });
+        return;
+      }
+
+      await createInAppNotification({
+        userId: manager.userId,
+        buildingId,
+        type: NotificationType.UPGRADE_REQUEST,
+        title,
+        body,
+        referenceType: "upgrade",
+      });
+    }),
+  );
+};
+
 /**
  * Get paginated notifications for the authenticated user.
  */

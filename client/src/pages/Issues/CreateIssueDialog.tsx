@@ -3,8 +3,8 @@ import { CreateDialog } from '@components/dialogs';
 import { IssueForm, type IssueFormValues } from './IssueForm';
 import { useGlobalMessage } from '@providers/MessageProvider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import { useForm } from 'react-hook-form';
+import { getErrorMessage } from '@utils/errorHandling';
 
 interface CreateIssueDialogProps {
   open: boolean;
@@ -12,19 +12,6 @@ interface CreateIssueDialogProps {
 }
 
 const MAX_FILES = 3;
-
-const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof AxiosError) {
-    const message = error.response?.data?.message;
-    return typeof message === 'string' ? message : fallback;
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-};
 
 export const CreateIssueDialog = ({ open, onClose }: CreateIssueDialogProps) => {
   const { showError, showSuccess } = useGlobalMessage();

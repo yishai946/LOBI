@@ -1,6 +1,7 @@
-import { AxiosError } from 'axios';
-
 import { ManagerPayment } from '@api/paymentService';
+import { getErrorMessage } from '@utils/errorHandling';
+
+export { getErrorMessage };
 
 export const formatCurrency = (amount: number, currency = 'ILS'): string =>
   new Intl.NumberFormat('he-IL', {
@@ -33,19 +34,6 @@ export const toDateInputValue = (value: string | null | undefined): string => {
   }
 
   return date.toISOString().slice(0, 10);
-};
-
-export const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof AxiosError) {
-    const message = error.response?.data?.message;
-    return typeof message === 'string' ? message : fallback;
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
 };
 
 export const getPaymentCardTone = (payment: ManagerPayment): 'default' | 'warning' | 'success' => {

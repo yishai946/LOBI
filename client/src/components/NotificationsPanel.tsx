@@ -13,6 +13,7 @@ import DoneAllRoundedIcon from '@mui/icons-material/DoneAllRounded';
 import MarkunreadRoundedIcon from '@mui/icons-material/MarkunreadRounded';
 import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded';
+import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded';
 import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
 import { Row, Column } from './containers';
 import { Notification, NotificationType } from '@entities/Notification';
@@ -53,6 +54,11 @@ const ICON_CONFIG: Record<
     gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
     color: '#d97706',
   },
+  UPGRADE_REQUEST: {
+    icon: <RocketLaunchRoundedIcon fontSize="small" />,
+    gradient: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+    color: '#6d28d9',
+  },
 };
 
 const getTimeAgo = (dateStr: string): string => {
@@ -85,6 +91,8 @@ const getNavigationPath = (notification: Notification): string | null => {
       return `/issues/${notification.referenceId}`;
     case 'payment':
       return '/payments';
+    case 'upgrade':
+      return '/upgrade';
     default:
       return null;
   }

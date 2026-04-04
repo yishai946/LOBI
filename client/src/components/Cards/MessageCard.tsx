@@ -9,28 +9,15 @@ import { Chip, IconButton, Tooltip, Typography } from '@mui/material';
 import { useAuth } from '@providers/AuthContext';
 import { useGlobalMessage } from '@providers/MessageProvider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { messageService } from '@api/messageService';
 import { getTimePassedMessage } from '@utils/funcs';
+import { getErrorMessage } from '@utils/errorHandling';
 
 interface MessageProps {
   item: MessageType;
 }
-
-const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof AxiosError) {
-    const message = error.response?.data?.message;
-    return typeof message === 'string' ? message : fallback;
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-};
 
 export const MessageCard = ({ item }: MessageProps) => {
   const queryClient = useQueryClient();

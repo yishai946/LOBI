@@ -42,6 +42,11 @@ export interface ManagerPaymentAssignment {
   apartmentId: string;
   status: PaymentStatusParam;
   stripeSessionId: string | null;
+  proofKey?: string | null;
+  proofUploadedAt?: string | null;
+  proofApprovedAt?: string | null;
+  proofApprovedById?: string | null;
+  proofUrl?: string | null;
   paidAt: string | null;
   paidById: string | null;
   createdAt: string;
@@ -213,6 +218,52 @@ export const paymentService = {
   }> => {
     const response = await axiosInstance.post('/payments/my/checkout-all', {});
     return response.data;
+  },
+
+  createPaymentProofUploadUrl: async (
+    assignmentId: string,
+    file: { filename: string; contentType: string }
+  ): Promise<{ key: string; uploadUrl: string }> => {
+    const response = await axiosInstance.post(`/payments/assignments/${assignmentId}/proof-urls`, {
+      file,
+    });
+    return response.data;
+  },
+
+  attachPaymentProof: async (
+    assignmentId: string,
+    proofKey: string
+  ): Promise<PaymentAssignment> => {
+    const response = await axiosInstance.post(`/payments/assignments/${assignmentId}/proof`, {
+      proofKey,
+    });
+    return response.data.assignment;
+  },
+
+  approvePaymentProof: async (assignmentId: string): Promise<ManagerPaymentAssignment> => {
+    const response = await axiosInstance.post(`/payments/assignments/${assignmentId}/approve`);
+    return response.data.assignment;
+  },
+
+  uploadPaymentProof: async (assignmentId: string, file: File): Promise<PaymentAssignment> => {
+    const upload = await paymentService.createPaymentProofUploadUrl(assignmentId, {
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+    });
+
+    const response = await fetch(upload.uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream',
+      },
+      body: file,
+    });
+
+    if (!response.ok) {
+      throw new Error('העלאת אסמכתא נכשלה');
+    }
+
+    return paymentService.attachPaymentProof(assignmentId, upload.key);
   },
 
   getMyRecurringSeries: async (): Promise<RecurringSeries[]> => {

@@ -1,9 +1,14 @@
 import { Request, Response } from "express";
 import * as buildingService from "../services/building.service";
 import { parsePaginationQuery } from "../utils/pagination";
+import { SessionPayload } from "../types/auth";
 
 export const createBuilding = async (req: Request, res: Response) => {
-  const building = await buildingService.create(req.body);
+  const currentUser = req.user as SessionPayload;
+  const building = await buildingService.create(
+    req.body,
+    currentUser.accountId!,
+  );
 
   return res.status(201).json({
     message: "Building created successfully",

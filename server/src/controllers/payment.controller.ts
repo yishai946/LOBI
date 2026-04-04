@@ -212,6 +212,44 @@ export const createPayAllCheckoutSession = async (
   res.json(result);
 };
 
+export const createPaymentProofUploadUrl = async (
+  req: Request,
+  res: Response,
+) => {
+  const result = await paymentService.createPaymentProofUploadUrl(
+    req.user,
+    req.params.assignmentId as string,
+    req.body,
+  );
+
+  res.json(result);
+};
+
+export const attachPaymentProof = async (req: Request, res: Response) => {
+  const assignment = await paymentService.attachPaymentProof(
+    req.user,
+    req.params.assignmentId as string,
+    req.body,
+  );
+
+  res.json({
+    message: "Payment proof attached successfully",
+    assignment,
+  });
+};
+
+export const approvePaymentProof = async (req: Request, res: Response) => {
+  const assignment = await paymentService.approvePaymentProof(
+    req.user,
+    req.params.assignmentId as string,
+  );
+
+  res.json({
+    message: "Payment approved successfully",
+    assignment,
+  });
+};
+
 export const paymentWebhook = async (req: Request, res: Response) => {
   const startTime = Date.now();
   const signatureHeader = paymentService.getPaymentWebhookSignatureHeader();

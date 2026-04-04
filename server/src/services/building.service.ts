@@ -4,9 +4,16 @@ import {
   UpdateBuildingCommand,
 } from "../validators/building.validator";
 import { PaginationOptions } from "../utils/pagination";
+import { HttpError } from "../utils/HttpError";
 
-export const create = async (data: CreateBuildingCommand) => {
-  return prisma.building.create({ data });
+export const create = async (
+  data: CreateBuildingCommand,
+  accountId: string,
+) => {
+  if (!accountId) {
+    throw new HttpError("חשבון נדרש", 400);
+  }
+  return prisma.building.create({ data: { ...data, accountId } });
 };
 
 export const getAll = async (pagination: PaginationOptions = {}) => {

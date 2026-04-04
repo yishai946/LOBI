@@ -5,4 +5,5 @@ export interface AuthContextData {
   buildingId?: string;
   apartmentId?: string;
   buildingName?: string | null;
+  buildingTier?: 'FREE' | 'PRO' | 'ENTERPRISE';
 }

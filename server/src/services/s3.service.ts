@@ -15,13 +15,13 @@ const client = new S3Client({
   },
 });
 
-const buildKey = (buildingId: string, filename: string) => {
+const buildKey = (prefix: string, buildingId: string, filename: string) => {
   const extension = path.extname(filename).replace(".", "");
   if (!extension) {
     throw new Error("נדרשת סיומת קובץ");
   }
 
-  return `issues/${buildingId}/${randomUUID()}.${extension}`;
+  return `${prefix}/${buildingId}/${randomUUID()}.${extension}`;
 };
 
 export const generateUploadUrls = async (
@@ -31,7 +31,7 @@ export const generateUploadUrls = async (
   const uploads = [];
 
   for (const file of files) {
-    const key = buildKey(buildingId, file.filename);
+    const key = buildKey("issues", buildingId, file.filename);
 
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME,
@@ -47,6 +47,25 @@ export const generateUploadUrls = async (
   }
 
   return uploads;
+};
+
+export const generatePaymentProofUploadUrl = async (
+  file: { filename: string; contentType: string },
+  buildingId: string,
+) => {
+  const key = buildKey("payments", buildingId, file.filename);
+
+  const command = new PutObjectCommand({
+    Bucket: process.env.AWS_BUCKET_NAME,
+    Key: key,
+    ContentType: file.contentType,
+  });
+
+  const uploadUrl = await getSignedUrl(client, command, {
+    expiresIn: 60 * 5,
+  });
+
+  return { key, uploadUrl };
 };
 
 export const generateViewUrl = async (key: string) => {

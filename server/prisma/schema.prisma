@@ -50,6 +50,17 @@ enum NotificationType {
   ISSUE_STATUS_CHANGED
   NEW_PAYMENT
   PAYMENT_REMINDER
+  UPGRADE_REQUEST
+}
+
+enum AccountTier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum UpgradeFeature {
+  DIGITAL_PAYMENTS
 }
 
 enum CreatorContextType {
@@ -58,13 +69,31 @@ enum CreatorContextType {
   ADMIN
 }
 
+model Account {
+  id                  String      @id @default(uuid())
+  name                String
+  tier                AccountTier @default(FREE)
+  ownerId             String
+  paymeSubscriptionId String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  owner     User       @relation("accountOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  buildings Building[]
+  members   User[]
+
+  @@index([ownerId])
+}
+
 model Building {
   id        String   @id @default(uuid())
   name      String?
   address   String
   logoUrl   String?
+  accountId String
   createdAt DateTime @default(now())
 
+  account         Account                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   apartments      Apartment[]
   managers        Manager[]
   messages        Message[]
@@ -72,46 +101,56 @@ model Building {
   payments        Payment[]
   recurringSeries RecurringPaymentSeries[]
   notifications   Notification[]
+  upgradeRequests UpgradeRequest[]
+
+  @@index([accountId])
 }
 
 model Apartment {
-  id         String   @id @default(uuid())
-  name       String
-  buildingId String
-  createdAt  DateTime @default(now())
+  id              String   @id @default(uuid())
+  buildingId      String
+  floorNumber     Int      @default(0)
+  apartmentNumber String
+  createdAt       DateTime @default(now())
 
   building             Building                     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   residents            Resident[]
   paymentAssignments   PaymentAssignment[]
   recurringEnrollments RecurringPaymentEnrollment[]
 
-  @@unique([buildingId, name])
+  @@unique([buildingId, floorNumber, apartmentNumber])
   @@index([buildingId])
 }
 
 model User {
-  id         String    @id @default(uuid())
-  phone      String    @unique
-  name       String?
-  role       UserRole  @default(USER)
-  isActive   Boolean   @default(true)
-  otpCode    String?
+  id               String    @id @default(uuid())
+  phone            String    @unique
+  name             String?
+  role             UserRole  @default(USER)
+  accountId        String?
+  isActive         Boolean   @default(true)
+  otpCode          String?
   otpExpires       DateTime?
   notifyOnMessages Boolean   @default(true)
   notifyOnIssues   Boolean   @default(true)
   notifyOnPayments Boolean   @default(true)
   createdAt        DateTime  @default(now())
 
-  issues                 Issue[]
-  messages               Message[]
-  paymentAssignments     PaymentAssignment[]
-  recurringSeriesCreated RecurringPaymentSeries[]
-  recurringEnrollments   RecurringPaymentEnrollment[]
-  notifications          Notification[]
-  pushSubscriptions      PushSubscription[]
+  account                    Account?                     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  ownedAccounts              Account[]                    @relation("accountOwner")
+  issues                     Issue[]
+  messages                   Message[]
+  paymentAssignmentsPaid     PaymentAssignment[]          @relation("PaymentAssignmentPaidBy")
+  paymentAssignmentsApproved PaymentAssignment[]          @relation("PaymentAssignmentApprovedBy")
+  upgradeRequests            UpgradeRequest[]
+  recurringSeriesCreated     RecurringPaymentSeries[]
+  recurringEnrollments       RecurringPaymentEnrollment[]
+  notifications              Notification[]
+  pushSubscriptions          PushSubscription[]
+  manages                    Manager[]
+  apartments                 Resident[]
 
-  manages    Manager[]
-  apartments Resident[]
+  @@index([accountId])
 }
 
 model Resident {
@@ -197,23 +236,44 @@ model Payment {
 }
 
 model PaymentAssignment {
-  id              String        @id @default(uuid())
-  paymentId       String
-  apartmentId     String
-  status          PaymentStatus @default(PENDING)
-  stripeSessionId String?
-  paidAt          DateTime?
-  paidById        String?
-  createdAt       DateTime      @default(now())
+  id                String        @id @default(uuid())
+  paymentId         String
+  apartmentId       String
+  status            PaymentStatus @default(PENDING)
+  stripeSessionId   String?
+  proofKey          String?
+  proofUploadedAt   DateTime?
+  proofApprovedAt   DateTime?
+  proofApprovedById String?
+  paidAt            DateTime?
+  paidById          String?
+  createdAt         DateTime      @default(now())
 
-  payment   Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
-  paidBy    User?     @relation(fields: [paidById], references: [id], onDelete: SetNull)
+  payment         Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  paidBy          User?     @relation("PaymentAssignmentPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
+  proofApprovedBy User?     @relation("PaymentAssignmentApprovedBy", fields: [proofApprovedById], references: [id], onDelete: SetNull)
 
   @@unique([paymentId, apartmentId])
   @@index([paymentId])
   @@index([apartmentId])
   @@index([stripeSessionId])
+  @@index([proofApprovedById])
+}
+
+model UpgradeRequest {
+  id               String         @id @default(uuid())
+  buildingId       String
+  residentId       String
+  featureRequested UpgradeFeature
+  createdAt        DateTime       @default(now())
+
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  resident User     @relation(fields: [residentId], references: [id], onDelete: Cascade)
+
+  @@unique([buildingId, residentId, featureRequested])
+  @@index([buildingId, featureRequested])
+  @@index([residentId])
 }
 
 model RecurringPaymentSeries {
@@ -357,7 +417,7 @@ model PushSubscription {
   auth      String
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

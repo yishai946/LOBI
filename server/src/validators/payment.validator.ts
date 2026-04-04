@@ -49,6 +49,17 @@ export const setRecurringEnrollmentSchema = z.object({
   enabled: z.boolean(),
 });
 
+export const paymentProofUploadSchema = z.object({
+  file: z.object({
+    filename: z.string().min(1, "שם קובץ נדרש"),
+    contentType: z.string().min(1, "סוג תוכן נדרש"),
+  }),
+});
+
+export const paymentProofAttachSchema = z.object({
+  proofKey: z.string().min(1, "נדרש מפתח קובץ"),
+});
+
 export type CreatePaymentCommand = z.infer<typeof createPaymentSchema>;
 export type CheckoutPaymentCommand = z.infer<typeof checkoutPaymentSchema>;
 export type UpdatePaymentCommand = z.infer<typeof updatePaymentSchema>;
@@ -61,3 +72,5 @@ export type UpdateRecurringSeriesCommand = z.infer<
 export type SetRecurringEnrollmentCommand = z.infer<
   typeof setRecurringEnrollmentSchema
 >;
+export type PaymentProofUploadCommand = z.infer<typeof paymentProofUploadSchema>;
+export type PaymentProofAttachCommand = z.infer<typeof paymentProofAttachSchema>;

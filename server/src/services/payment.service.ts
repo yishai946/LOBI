@@ -5,6 +5,8 @@ import {
   CheckoutPaymentCommand,
   CreateRecurringSeriesCommand,
   CreatePaymentCommand,
+  PaymentProofAttachCommand,
+  PaymentProofUploadCommand,
   SetRecurringEnrollmentCommand,
   UpdateRecurringSeriesCommand,
   UpdatePaymentCommand,
@@ -21,6 +23,13 @@ import { SessionType } from "../enums/sessionType.enum";
 import { PaginationOptions, SortOrder } from "../utils/pagination";
 import { getPaymentProvider } from "./paymentProviders";
 import { notifyNewPayment } from "./notification.service";
+import { generatePaymentProofUploadUrl, generateViewUrl } from "./s3.service";
+import { getBuildingAccountTier } from "./account.service";
+
+const formatApartmentLabel = (apartment: {
+  floorNumber: number;
+  apartmentNumber: string;
+}) => `דירה ${apartment.apartmentNumber}, קומה ${apartment.floorNumber}`;
 
 type PaymentFilter =
   | "all"
@@ -99,6 +108,22 @@ const ensureBuildingAccess = async (
 
   if (currentUser.buildingId !== buildingId) {
     throw new HttpError("אסור", 403);
+  }
+};
+
+const assertProviderPaymentsEnabled = async (buildingId: string) => {
+  const tier = await getBuildingAccountTier(buildingId);
+
+  if (tier === "FREE") {
+    throw new HttpError("תשלומים דיגיטליים זמינים רק בתוכנית Pro", 403);
+  }
+};
+
+const assertFreeTier = async (buildingId: string) => {
+  const tier = await getBuildingAccountTier(buildingId);
+
+  if (tier !== "FREE") {
+    throw new HttpError("העלאת אסמכתא זמינה רק בתוכנית Free", 403);
   }
 };
 
@@ -321,11 +346,7 @@ export const createPayment = async (
   });
 
   // Fire-and-forget notification
-  notifyNewPayment(
-    data.buildingId,
-    payment.id,
-    payment.title,
-  );
+  notifyNewPayment(data.buildingId, payment.id, payment.title);
 
   return { payment };
 };
@@ -750,12 +771,21 @@ export const getAssignmentsForPayment = async (
     throw new HttpError("אסור", 403);
   }
 
-  return prisma.paymentAssignment.findMany({
+  const assignments = await prisma.paymentAssignment.findMany({
     where: { paymentId },
     include: { apartment: true },
     skip,
     take: limit,
   });
+
+  return Promise.all(
+    assignments.map(async (assignment) => ({
+      ...assignment,
+      proofUrl: assignment.proofKey
+        ? await generateViewUrl(assignment.proofKey)
+        : null,
+    })),
+  );
 };
 
 export const getMyPayments = async (
@@ -775,7 +805,7 @@ export const getMyPayments = async (
 
   const apartmentId = currentUser.apartmentId;
 
-  return prisma.paymentAssignment.findMany({
+  const assignments = await prisma.paymentAssignment.findMany({
     where: {
       apartmentId,
       ...(status ? { status } : {}),
@@ -813,6 +843,15 @@ export const getMyPayments = async (
     skip,
     take: limit,
   });
+
+  return Promise.all(
+    assignments.map(async (assignment) => ({
+      ...assignment,
+      proofUrl: assignment.proofKey
+        ? await generateViewUrl(assignment.proofKey)
+        : null,
+    })),
+  );
 };
 
 export const getMyNextPayment = async (currentUser: SessionPayload) => {
@@ -862,9 +901,15 @@ export const createCheckoutSession = async (
     throw new HttpError("אסור", 403);
   }
 
+  if (!currentUser.apartmentId) {
+    throw new HttpError("נדרש הקשר דירה", 400);
+  }
+
   if (currentUser.apartmentId !== assignment.apartmentId) {
     throw new HttpError("אסור", 403);
   }
+
+  await assertProviderPaymentsEnabled(assignment.payment.buildingId);
 
   const requestedRecurring = data.isRecurring ?? assignment.payment.isRecurring;
 
@@ -920,6 +965,10 @@ export const createPayAllCheckoutSession = async (
     throw new HttpError("נדרש הקשר דירה", 400);
   }
 
+  if (!currentUser.apartmentId) {
+    throw new HttpError("נדרש הקשר דירה", 400);
+  }
+
   const pendingAssignments = await prisma.paymentAssignment.findMany({
     where: {
       apartmentId: currentUser.apartmentId,
@@ -943,6 +992,8 @@ export const createPayAllCheckoutSession = async (
   if (pendingAssignments.length === 0) {
     throw new HttpError("אין תשלומים ממתינים לתשלום", 400);
   }
+
+  await assertProviderPaymentsEnabled(pendingAssignments[0].payment.buildingId);
 
   const assignmentIds = pendingAssignments.map((assignment) => assignment.id);
   const assignmentIdsSerialized = assignmentIds.join(",");
@@ -1006,6 +1057,151 @@ export const createPayAllCheckoutSession = async (
   return {
     checkoutUrl: session.url,
     assignmentsCount: assignmentIds.length,
+  };
+};
+
+export const createPaymentProofUploadUrl = async (
+  currentUser: SessionPayload,
+  assignmentId: string,
+  data: PaymentProofUploadCommand,
+) => {
+  if (currentUser.sessionType !== SessionType.RESIDENT) {
+    throw new HttpError("אסור", 403);
+  }
+
+  const assignment = await prisma.paymentAssignment.findUnique({
+    where: { id: assignmentId },
+    include: { payment: { select: { buildingId: true } } },
+  });
+
+  if (!assignment) {
+    throw new HttpError("שיוך התשלום לא נמצא", 404);
+  }
+
+  if (assignment.status === PaymentStatus.PAID) {
+    throw new HttpError("התשלום כבר הושלם", 400);
+  }
+
+  if (assignment.apartmentId !== currentUser.apartmentId) {
+    throw new HttpError("אסור", 403);
+  }
+
+  await assertFreeTier(assignment.payment.buildingId);
+
+  const contentType = data.file.contentType.toLowerCase();
+  if (!contentType.startsWith("image/") && contentType !== "application/pdf") {
+    throw new HttpError("סוג קובץ לא נתמך", 400);
+  }
+
+  return generatePaymentProofUploadUrl(
+    data.file,
+    assignment.payment.buildingId,
+  );
+};
+
+export const attachPaymentProof = async (
+  currentUser: SessionPayload,
+  assignmentId: string,
+  data: PaymentProofAttachCommand,
+) => {
+  if (currentUser.sessionType !== SessionType.RESIDENT) {
+    throw new HttpError("אסור", 403);
+  }
+
+  const assignment = await prisma.paymentAssignment.findUnique({
+    where: { id: assignmentId },
+    include: { payment: { select: { buildingId: true } } },
+  });
+
+  if (!assignment) {
+    throw new HttpError("שיוך התשלום לא נמצא", 404);
+  }
+
+  if (assignment.status === PaymentStatus.PAID) {
+    throw new HttpError("התשלום כבר הושלם", 400);
+  }
+
+  if (assignment.apartmentId !== currentUser.apartmentId) {
+    throw new HttpError("אסור", 403);
+  }
+
+  await assertFreeTier(assignment.payment.buildingId);
+
+  const expectedPrefix = `payments/${assignment.payment.buildingId}/`;
+  if (!data.proofKey.startsWith(expectedPrefix)) {
+    throw new HttpError("מפתח קובץ לא תקין", 400);
+  }
+
+  const updatedAssignment = await prisma.paymentAssignment.update({
+    where: { id: assignment.id },
+    data: {
+      proofKey: data.proofKey,
+      proofUploadedAt: new Date(),
+      proofApprovedAt: null,
+      proofApprovedById: null,
+    },
+  });
+
+  return {
+    ...updatedAssignment,
+    proofUrl: updatedAssignment.proofKey
+      ? await generateViewUrl(updatedAssignment.proofKey)
+      : null,
+  };
+};
+
+export const approvePaymentProof = async (
+  currentUser: SessionPayload,
+  assignmentId: string,
+) => {
+  const assignment = await prisma.paymentAssignment.findUnique({
+    where: { id: assignmentId },
+    include: {
+      payment: { select: { buildingId: true } },
+    },
+  });
+
+  if (!assignment) {
+    throw new HttpError("שיוך התשלום לא נמצא", 404);
+  }
+
+  if (
+    currentUser.sessionType !== SessionType.ADMIN &&
+    currentUser.buildingId !== assignment.payment.buildingId
+  ) {
+    throw new HttpError("אסור", 403);
+  }
+
+  if (!assignment.proofKey) {
+    throw new HttpError("לא צורפה אסמכתא לתשלום", 400);
+  }
+
+  if (assignment.status === PaymentStatus.PAID) {
+    return {
+      ...assignment,
+      proofUrl: assignment.proofKey
+        ? await generateViewUrl(assignment.proofKey)
+        : null,
+    };
+  }
+
+  await assertFreeTier(assignment.payment.buildingId);
+
+  const updatedAssignment = await prisma.paymentAssignment.update({
+    where: { id: assignment.id },
+    data: {
+      status: PaymentStatus.PAID,
+      paidAt: new Date(),
+      proofApprovedAt: new Date(),
+      proofApprovedById: currentUser.userId,
+    },
+  });
+
+  return {
+    ...updatedAssignment,
+    proofUrl: updatedAssignment.proofKey
+      ? await generateViewUrl(updatedAssignment.proofKey)
+      : null,
   };
 };
 
@@ -1329,6 +1525,17 @@ export const syncRecurringEnrollmentSubscriptionState = async (subscription: {
 };
 
 export const getCustomReceiptBySessionId = async (stripeSessionId: string) => {
+  const assignmentForReceipt = await prisma.paymentAssignment.findFirst({
+    where: { stripeSessionId },
+    include: { payment: { select: { buildingId: true } } },
+  });
+
+  if (assignmentForReceipt) {
+    await assertProviderPaymentsEnabled(
+      assignmentForReceipt.payment.buildingId,
+    );
+  }
+
   const session = await paymentProvider.getSessionSnapshot(stripeSessionId);
   const isPayAll = session.metadata?.payAll === "true";
   const payAllAssignmentIds = (session.metadata?.assignmentIds || "")
@@ -1398,7 +1605,7 @@ export const getCustomReceiptBySessionId = async (stripeSessionId: string) => {
       paidAtIso: issueDate.toISOString(),
       buildingName: firstAssignment.payment.building.name || "בניין ללא שם",
       buildingAddress: firstAssignment.payment.building.address,
-      apartmentName: firstAssignment.apartment.name,
+      apartmentName: formatApartmentLabel(firstAssignment.apartment),
       payerName: firstAssignment.paidBy?.name || "דייר",
       payerPhone: firstAssignment.paidBy?.phone || "",
       businessName:
@@ -1459,7 +1666,7 @@ export const getCustomReceiptBySessionId = async (stripeSessionId: string) => {
     paidAtIso: assignment.paidAt?.toISOString() || null,
     buildingName: assignment.payment.building.name || "בניין ללא שם",
     buildingAddress: assignment.payment.building.address,
-    apartmentName: assignment.apartment.name,
+    apartmentName: formatApartmentLabel(assignment.apartment),
     payerName: assignment.paidBy?.name || "דייר",
     payerPhone: assignment.paidBy?.phone || "",
     businessName:
@@ -1565,7 +1772,8 @@ export const getRecurringSeriesForManager = async (
           apartment: {
             select: {
               id: true,
-              name: true,
+              floorNumber: true,
+              apartmentNumber: true,
             },
           },
           resident: {
@@ -1576,11 +1784,18 @@ export const getRecurringSeriesForManager = async (
             },
           },
         },
-        orderBy: {
-          apartment: {
-            name: "asc",
+        orderBy: [
+          {
+            apartment: {
+              floorNumber: "asc",
+            },
           },
-        },
+          {
+            apartment: {
+              apartmentNumber: "asc",
+            },
+          },
+        ],
       },
     },
     orderBy: [{ createdAt: "desc" }],
@@ -1755,6 +1970,8 @@ export const setMyRecurringEnrollment = async (
   if (!apartment || apartment.buildingId !== series.buildingId) {
     throw new HttpError("אסור", 403);
   }
+
+  await assertProviderPaymentsEnabled(series.buildingId);
 
   if (series.status === RecurringSeriesStatus.ENDED) {
     throw new HttpError("לא ניתן להצטרף לסדרה שהסתיימה", 400);

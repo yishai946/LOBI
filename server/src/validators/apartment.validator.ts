@@ -1,12 +1,14 @@
 import z from "zod";
 
 export const createApartmentSchema = z.object({
-  name: z.string().min(1, "שם נדרש"),
-  buildingId: z.uuid("מזהה בניין לא תקין"),
+  buildingId: z.uuid("???? ????? ?? ????"),
+  floorNumber: z.number().int().min(0, "???? ?? ?????"),
+  apartmentNumber: z.string().min(1, "???? ???? ????"),
 });
 
 export const updateApartmentSchema = z.object({
-  name: z.string().min(1, "שם נדרש").optional(),
+  floorNumber: z.number().int().min(0, "???? ?? ?????").optional(),
+  apartmentNumber: z.string().min(1, "???? ???? ????").optional(),
 });
 
 export type CreateApartmentCommand = z.infer<typeof createApartmentSchema>;

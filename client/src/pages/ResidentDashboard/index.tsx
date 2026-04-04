@@ -41,7 +41,7 @@ export const ResidentDashboard = () => {
     enabled: !!apartmentId,
   });
   const apartmentSubtitle = apartmentData
-    ? `דירה ${apartmentData.name}`
+    ? `${apartmentData.apartmentNumber} · קומה ${apartmentData.floorNumber}`
     : apartmentId
       ? `דירה  ${apartmentId}`
       : 'דירה לא נבחרה';

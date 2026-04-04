@@ -5,9 +5,9 @@ import { ContextType } from '@enums/ContextType';
 import { useAuth } from '@providers/AuthContext';
 import { useGlobalMessage } from '@providers/MessageProvider';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { getErrorMessage } from '@utils/errorHandling';
 import { MessageForm, type MessageFormValues } from './MessageForm';
 
 interface EditMessageDialogProps {
@@ -15,19 +15,6 @@ interface EditMessageDialogProps {
   message: Message;
   onClose: () => void;
 }
-
-const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof AxiosError) {
-    const message = error.response?.data?.message;
-    return typeof message === 'string' ? message : fallback;
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-};
 
 export const EditMessageDialog = ({ open, message, onClose }: EditMessageDialogProps) => {
   const { currentContext } = useAuth();
