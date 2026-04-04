@@ -5,10 +5,7 @@ import { SessionPayload } from "../types/auth";
 
 export const createBuilding = async (req: Request, res: Response) => {
   const currentUser = req.user as SessionPayload;
-  const building = await buildingService.create(
-    req.body,
-    currentUser.accountId!,
-  );
+  const building = await buildingService.create(req.body);
 
   return res.status(201).json({
     message: "Building created successfully",

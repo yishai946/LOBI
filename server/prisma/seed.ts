@@ -4,47 +4,21 @@ import prisma from "../src/lib/prisma";
 async function main() {
   console.log("Seeding the database...");
 
-  // 1. Create manager account and user
-  const managerUser = await prisma.user.create({
-    data: {
-      phone: "0500000002",
-      name: "ישראל ישראלי",
-      role: "USER",
-      isActive: true,
-    },
-  });
-
-  // 2. Create account owned by manager
-  const account = await prisma.account.create({
-    data: {
-      name: "חשבון מגדלי השמש",
-      tier: "FREE",
-      ownerId: managerUser.id,
-    },
-  });
-
-  // Update manager user with account
-  await prisma.user.update({
-    where: { id: managerUser.id },
-    data: { accountId: account.id },
-  });
-
-  // 3. Create a building
-  const building = await prisma.building.create({
-    data: {
-      name: "מגדלי השמש",
-      address: "רחוב הרצל 10, תל אביב",
-      accountId: account.id,
-    },
-  });
-  console.log(`Created building: ${building.name}`);
-
-  // 4. Create users (Admin, Residents)
+  // 1. Create users (Admin, Manager, Residents)
   const adminUser = await prisma.user.create({
     data: {
       phone: "0500000001",
       name: "מנהל מערכת",
       role: "ADMIN",
+      isActive: true,
+    },
+  });
+
+  const managerUser = await prisma.user.create({
+    data: {
+      phone: "0500000002",
+      name: "ישראל ישראלי",
+      role: "USER",
       isActive: true,
     },
   });
@@ -68,7 +42,16 @@ async function main() {
   });
   console.log("Created users");
 
-  // 5. Assign manager to building
+  // 2. Create a building
+  const building = await prisma.building.create({
+    data: {
+      name: "מגדלי השמש",
+      address: "רחוב הרצל 10, תל אביב",
+    },
+  });
+  console.log(`Created building: ${building.name}`);
+
+  // 3. Assign manager to building
   await prisma.manager.create({
     data: {
       userId: managerUser.id,
@@ -77,24 +60,24 @@ async function main() {
   });
   console.log(`Assigned ${managerUser.name} as manager`);
 
-  // 6. Create apartments
+  // 4. Create apartments
   const apt1 = await prisma.apartment.create({
     data: {
-      apartmentNumber: "101",
+      name: "דירה 101",
       buildingId: building.id,
     },
   });
 
   const apt2 = await prisma.apartment.create({
     data: {
-      apartmentNumber: "102",
+      name: "דירה 102",
       buildingId: building.id,
     },
   });
 
   const apt3 = await prisma.apartment.create({
     data: {
-      apartmentNumber: "103",
+      name: "דירה 103",
       buildingId: building.id,
     },
   });
@@ -116,7 +99,7 @@ async function main() {
   });
   console.log("Assigned residents");
 
-  // 7. Create some messages (announcements)
+  // 6. Create some messages (announcements)
   const message1 = await prisma.message.create({
     data: {
       buildingId: building.id,
@@ -170,7 +153,7 @@ async function main() {
   });
   console.log("Created issues");
 
-  // 8. Create a payment
+  // 9. Create a payment
   const payment = await prisma.payment.create({
     data: {
       buildingId: building.id,
@@ -251,7 +234,7 @@ async function main() {
   });
   console.log("Created notifications");
 
-  console.log("Seeding completed successfully.");
+  console.log("✅ Seeding completed successfully.");
 }
 
 main()

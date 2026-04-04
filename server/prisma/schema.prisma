@@ -53,12 +53,6 @@ enum NotificationType {
   UPGRADE_REQUEST
 }
 
-enum AccountTier {
-  FREE
-  PRO
-  ENTERPRISE
-}
-
 enum UpgradeFeature {
   DIGITAL_PAYMENTS
 }
@@ -69,31 +63,13 @@ enum CreatorContextType {
   ADMIN
 }
 
-model Account {
-  id                  String      @id @default(uuid())
-  name                String
-  tier                AccountTier @default(FREE)
-  ownerId             String
-  paymeSubscriptionId String?
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
-
-  owner     User       @relation("accountOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  buildings Building[]
-  members   User[]
-
-  @@index([ownerId])
-}
-
 model Building {
   id        String   @id @default(uuid())
   name      String?
   address   String
   logoUrl   String?
-  accountId String
   createdAt DateTime @default(now())
 
-  account         Account                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   apartments      Apartment[]
   managers        Manager[]
   messages        Message[]
@@ -102,23 +78,20 @@ model Building {
   recurringSeries RecurringPaymentSeries[]
   notifications   Notification[]
   upgradeRequests UpgradeRequest[]
-
-  @@index([accountId])
 }
 
 model Apartment {
-  id              String   @id @default(uuid())
-  buildingId      String
-  floorNumber     Int      @default(0)
-  apartmentNumber String
-  createdAt       DateTime @default(now())
+  id         String   @id @default(uuid())
+  buildingId String
+  name       String
+  createdAt  DateTime @default(now())
 
   building             Building                     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   residents            Resident[]
   paymentAssignments   PaymentAssignment[]
   recurringEnrollments RecurringPaymentEnrollment[]
 
-  @@unique([buildingId, floorNumber, apartmentNumber])
+  @@unique([buildingId, name])
   @@index([buildingId])
 }
 
@@ -127,7 +100,6 @@ model User {
   phone            String    @unique
   name             String?
   role             UserRole  @default(USER)
-  accountId        String?
   isActive         Boolean   @default(true)
   otpCode          String?
   otpExpires       DateTime?
@@ -136,8 +108,6 @@ model User {
   notifyOnPayments Boolean   @default(true)
   createdAt        DateTime  @default(now())
 
-  account                    Account?                     @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  ownedAccounts              Account[]                    @relation("accountOwner")
   issues                     Issue[]
   messages                   Message[]
   paymentAssignmentsPaid     PaymentAssignment[]          @relation("PaymentAssignmentPaidBy")
@@ -149,8 +119,6 @@ model User {
   pushSubscriptions          PushSubscription[]
   manages                    Manager[]
   apartments                 Resident[]
-
-  @@index([accountId])
 }
 
 model Resident {

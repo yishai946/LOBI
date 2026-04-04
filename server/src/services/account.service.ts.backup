@@ -1,0 +1,35 @@
+import { SessionPayload } from "../types/auth";
+import { HttpError } from "../utils/HttpError";
+
+/**
+ * Account service is temporarily disabled during schema refactoring
+ * These functions will be re-implemented when Account model is re-introduced for multi-tenancy
+ */
+
+export const createAccount = async (
+  userId: string,
+  accountName: string,
+  tier: "FREE" | "PRO" | "ENTERPRISE" = "FREE",
+) => {
+  throw new HttpError("Account service is temporarily disabled", 501);
+};
+
+export const getMyAccount = async (currentUser: SessionPayload) => {
+  throw new HttpError("Account service is temporarily disabled", 501);
+};
+
+export const checkBuildingLimitForAccount = async (accountId: string) => {
+  throw new HttpError("Account service is temporarily disabled", 501);
+};
+
+export const getBuildingAccountTier = async (buildingId: string) => {
+  // Return FREE tier for all buildings temporarily
+  return "FREE";
+};
+
+export const updateAccountTier = async (
+  accountId: string,
+  newTier: "FREE" | "PRO" | "ENTERPRISE",
+) => {
+  throw new HttpError("Account service is temporarily disabled", 501);
+};
