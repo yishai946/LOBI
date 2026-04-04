@@ -10,7 +10,7 @@ import {
 } from "../validators/issue.validator";
 import { generateUploadUrls, generateViewUrl } from "./s3.service";
 import { PaginationOptions, SortOrder } from "../utils/pagination";
-import { notifyIssueStatusChanged } from "./notification.service";
+import { notifyIssueStatusChanged, notifyNewIssue } from "./notification.service";
 
 interface IssueQueryOptions {
   status?: IssueStatus;
@@ -253,6 +253,9 @@ export const createIssue = async (
       })),
     });
   }
+
+  // Fire-and-forget notification for all residents/managers
+  notifyNewIssue(buildingId, currentUser.userId, issue.id, issue.title);
 
   return issue;
 };

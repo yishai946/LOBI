@@ -197,6 +197,46 @@ export const notifyNewMessage = async (
 };
 
 /**
+ * Notify all residents + managers in a building about a new issue,
+ * excluding the creator.
+ */
+export const notifyNewIssue = async (
+  buildingId: string,
+  creatorId: string,
+  issueId: string,
+  issueTitle: string,
+) => {
+  const [residents, managers] = await Promise.all([
+    prisma.resident.findMany({
+      where: { apartment: { buildingId } },
+      select: { userId: true },
+    }),
+    prisma.manager.findMany({
+      where: { buildingId },
+      select: { userId: true },
+    }),
+  ]);
+
+  const userIdSet = new Set<string>();
+  for (const r of residents) userIdSet.add(r.userId);
+  for (const m of managers) userIdSet.add(m.userId);
+  userIdSet.delete(creatorId);
+
+  const items: CreateNotificationData[] = Array.from(userIdSet).map(
+    (userId) => ({
+      userId,
+      buildingId,
+      type: NotificationType.ISSUE_STATUS_CHANGED, // Reusing status change for now or can use a new type if exists
+      title: `תקלה חדשה דווחה: ${issueTitle}`,
+      referenceId: issueId,
+      referenceType: "issue",
+    }),
+  );
+
+  await createBulkNotifications(items);
+};
+
+/**
  * Notify relevant users when an issue status changes.
  * - Notify the issue creator (if they're not the one who changed it).
  * - Notify building managers (if a resident changed it).
