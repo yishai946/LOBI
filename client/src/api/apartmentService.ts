@@ -1,5 +1,5 @@
 import { Apartment } from '@entities/Apartment';
-import { PaginationParams } from '@types/pagination';
+import { PaginationParams } from '../types/pagination';
 import { axiosInstance } from './axiosInstance';
 
 export interface CreateApartmentPayload {

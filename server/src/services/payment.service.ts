@@ -26,8 +26,8 @@ import { notifyNewPayment } from "./notification.service";
 import { generatePaymentProofUploadUrl, generateViewUrl } from "./s3.service";
 import { getBuildingAccountTier } from "./account.service";
 
-const formatApartmentLabel = (apartment: { name: string }) =>
-  `דירה ${apartment.name}`;
+const formatApartmentLabel = (apartment: { apartmentNumber: string, floorNumber: number }) =>
+  `דירה ${apartment.apartmentNumber}, קומה ${apartment.floorNumber}`;
 
 type PaymentFilter =
   | "all"
@@ -1770,7 +1770,8 @@ export const getRecurringSeriesForManager = async (
           apartment: {
             select: {
               id: true,
-              name: true,
+              apartmentNumber: true,
+              floorNumber: true,
             },
           },
           resident: {
@@ -1784,7 +1785,7 @@ export const getRecurringSeriesForManager = async (
         orderBy: [
           {
             apartment: {
-              name: "asc",
+              apartmentNumber: "asc",
             },
           },
         ],

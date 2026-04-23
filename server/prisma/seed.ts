@@ -1,5 +1,6 @@
 import { Prisma } from "../generated/prisma/client";
 import prisma from "../src/lib/prisma";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 async function main() {
   console.log("Seeding the database with comprehensive test data...\n");
@@ -138,39 +139,34 @@ async function main() {
 
   console.log("✅ Assigned managers to buildings\n");
 
-  // ============================================================================
-  // 4. CREATE APARTMENTS (various scenarios)
-  // ============================================================================
-  console.log("📝 Creating apartments...");
-
   // Building 1 apartments
   const apt1_1 = await prisma.apartment.create({
-    data: { name: "דירה 101", buildingId: building1.id },
+    data: { floorNumber: 1, apartmentNumber: "101", buildingId: building1.id },
   });
 
   const apt1_2 = await prisma.apartment.create({
-    data: { name: "דירה 102", buildingId: building1.id },
+    data: { floorNumber: 1, apartmentNumber: "102", buildingId: building1.id },
   });
 
   const apt1_3 = await prisma.apartment.create({
-    data: { name: "דירה 103", buildingId: building1.id },
+    data: { floorNumber: 1, apartmentNumber: "103", buildingId: building1.id },
   });
 
   const apt1_4 = await prisma.apartment.create({
-    data: { name: "דירה 201", buildingId: building1.id },
+    data: { floorNumber: 2, apartmentNumber: "201", buildingId: building1.id },
   });
 
   const apt1_5 = await prisma.apartment.create({
-    data: { name: "דירה 202", buildingId: building1.id },
+    data: { floorNumber: 2, apartmentNumber: "202", buildingId: building1.id },
   });
 
   // Building 2 apartments
   const apt2_1 = await prisma.apartment.create({
-    data: { name: "דירה 1", buildingId: building2.id },
+    data: { floorNumber: 1, apartmentNumber: "1", buildingId: building2.id },
   });
 
   const apt2_2 = await prisma.apartment.create({
-    data: { name: "דירה 2", buildingId: building2.id },
+    data: { floorNumber: 1, apartmentNumber: "2", buildingId: building2.id },
   });
 
   console.log("✅ Created 7 apartments (5 in building 1, 2 in building 2)\n");
@@ -212,7 +208,7 @@ async function main() {
   const msg1 = await prisma.message.create({
     data: {
       buildingId: building1.id,
-      title: "🚨 הפסקת מים חירום",
+      title: "הפסקת מים חירום",
       content:
         "מחר בין השעות 10:00 ל-14:00 תהיה הפסקת מים בעקבות תקלה בתשתית. נא להיערך בהתאם.",
       isUrgent: true,
@@ -283,7 +279,7 @@ async function main() {
   const issue1 = await prisma.issue.create({
     data: {
       buildingId: building1.id,
-      title: "🔴 נזילה חמורה בלובי",
+      title: "נזילה חמורה בלובי",
       description: "יש נזילה גדולה מהתקרה באזור המעליות",
       isUrgent: true,
       status: "open",
@@ -312,8 +308,8 @@ async function main() {
   const issue3 = await prisma.issue.create({
     data: {
       buildingId: building1.id,
-      title: "תקלה בדלת כניסה - แก้已修复",
-      description: "דלת הכניסה לא נסגרת כמו שצריך - תוקנה",
+      title: "תקלה בדלת כניסה",
+      description: "דלת הכניסה לא נסגרת כמו שצריך",
       isUrgent: false,
       status: "done",
       openedAt: twoDaysAgo,
@@ -328,7 +324,7 @@ async function main() {
   const issue4 = await prisma.issue.create({
     data: {
       buildingId: building2.id,
-      title: "🔴 תקלה בחשמל",
+      title: "תקלה בחשמל",
       description: "אין זרם חשמל בקומה 1",
       isUrgent: true,
       status: "open",
@@ -344,15 +340,42 @@ async function main() {
   );
 
   // ============================================================================
-  // 8. CREATE ISSUE IMAGES (for issue with attachments testing)
+  // 8. CREATE ISSUE IMAGES
   // ============================================================================
-  console.log("📝 Creating issue images...");
+  console.log("📝 Uploading placeholder images to S3...");
+
+  const s3 = new S3Client({ region: process.env.AWS_REGION });
+
+  async function uploadPlaceholderImage(key: string) {
+    const imageBuffer = await fetch("https://picsum.photos/800/600")
+      .then((res) => res.arrayBuffer())
+      .then((buf) => Buffer.from(buf));
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: key,
+        Body: imageBuffer,
+        ContentType: "image/jpeg",
+      }),
+    );
+  }
+
+  const imageKeys = [
+    "issues/issue1/photo1.jpg",
+    "issues/issue1/photo2.jpg",
+    "issues/issue2/photo1.jpg",
+  ];
+
+  for (const key of imageKeys) {
+    await uploadPlaceholderImage(key);
+  }
 
   await prisma.issueImage.createMany({
     data: [
-      { issueId: issue1.id, imageKey: "issues/issue1/photo1.jpg" },
-      { issueId: issue1.id, imageKey: "issues/issue1/photo2.jpg" },
-      { issueId: issue2.id, imageKey: "issues/issue2/photo1.jpg" },
+      { issueId: issue1.id, imageKey: imageKeys[0] },
+      { issueId: issue1.id, imageKey: imageKeys[1] },
+      { issueId: issue2.id, imageKey: imageKeys[2] },
     ],
   });
 
@@ -399,7 +422,7 @@ async function main() {
   const paymentOverdue = await prisma.payment.create({
     data: {
       buildingId: building1.id,
-      title: "ועד בית - חודש מרץ (עתיק)",
+      title: "ועד בית - חודש מרץ",
       description: "תשלום שוטף ועד בית",
       amount: new Prisma.Decimal("350.00"),
       currency: "ILS",
@@ -411,8 +434,8 @@ async function main() {
   const payment2_building = await prisma.payment.create({
     data: {
       buildingId: building2.id,
-      title: "בדיקת מעליון",
-      description: "בדיקה תקופתית של המעליון",
+      title: "בדיקת מעליות",
+      description: "בדיקה תקופתית של המעליות",
       amount: new Prisma.Decimal("150.00"),
       currency: "ILS",
       dueAt: dueToday,

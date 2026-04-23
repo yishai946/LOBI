@@ -61,7 +61,7 @@ export const LoginPage: React.FC = () => {
   return (
     <Column
       sx={{
-        height: '100dvh',
+        height: '100vh',
         overflow: 'hidden',
         bgcolor: 'background.default',
       }}
@@ -83,8 +83,8 @@ export const LoginPage: React.FC = () => {
           component="img"
           src="/assets/logo.png"
           alt="לוגו LOBI"
-          width={{ xs: 68, sm: 50, md: 96 }}
-          height={{ xs: 68, sm: 50, md: 96 }}
+          width={{ xs: 68, sm: 50, md: 70, }}
+          height={{ xs: 68, sm: 50, md: 70, }}
           mb={{ xs: 1, sm: 2.5 }}
           sx={{
             objectFit: 'contain',

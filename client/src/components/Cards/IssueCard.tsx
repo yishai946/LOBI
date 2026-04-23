@@ -88,7 +88,7 @@ export const IssueCard = ({ item, isClickable = true }: IssueCardProps) => {
   useEffect(() => {
     setIsImageLoaded(!hasImage);
   }, [hasImage, imageUrl]);
-
+  
   return (
     <Card
       isError={item.isUrgent}

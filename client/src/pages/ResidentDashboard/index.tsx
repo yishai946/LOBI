@@ -40,11 +40,10 @@ export const ResidentDashboard = () => {
     queryFn: paymentService.getMyNextPayment,
     enabled: !!apartmentId,
   });
+
   const apartmentSubtitle = apartmentData
-    ? `${apartmentData.apartmentNumber} · קומה ${apartmentData.floorNumber}`
-    : apartmentId
-      ? `דירה  ${apartmentId}`
-      : 'דירה לא נבחרה';
+    ? `קומה ${apartmentData.floorNumber} · דירה ${apartmentData.apartmentNumber}`
+    : "";
 
   return (
     <Column>

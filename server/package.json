@@ -10,6 +10,9 @@
     "start": "node dist/server.js",
     "postinstall": "prisma generate",
     "test": "jest",
+    "db:reset": "prisma migrate reset --force",
+    "db:reset:seed": "prisma migrate reset --force && prisma db seed",
+    "db:seed": "prisma db seed",
     "db:generate": "prisma generate",
     "db:test:status": "prisma migrate status --config prisma.config.test.ts",
     "db:test:migrate": "prisma migrate dev --config prisma.config.test.ts",
@@ -19,7 +22,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1008.0",
+    "@aws-sdk/client-s3": "^3.1036.0",
     "@aws-sdk/s3-request-presigner": "^3.1008.0",
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
