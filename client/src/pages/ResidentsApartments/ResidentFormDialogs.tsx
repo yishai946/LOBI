@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useEffect, useMemo } from 'react';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { TextField, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material';
 import { CreateDialog, EditDialog, ConfirmationDialog } from '@components/dialogs';
 import { Apartment } from '@entities/Apartment';
 import { Resident } from '@entities/Resident';
-import { Row, Column } from '@components/containers';
+import { Column } from '@components/containers';
 
 interface ApartmentFormValues {
   floorNumber: string;
@@ -12,6 +12,12 @@ interface ApartmentFormValues {
 }
 
 interface CreateResidentFormValues {
+  phone: string;
+  floorNumber: string;
+  apartmentNumber: string;
+}
+
+interface CreateResidentSubmitValues {
   phone: string;
   apartmentId: string;
 }
@@ -43,7 +49,7 @@ interface ResidentFormDialogsProps {
   onSubmitCreateApartment: (values: ApartmentFormValues) => void;
   onSubmitEditApartment: (values: ApartmentFormValues) => void;
   onConfirmDeleteApartment: () => void;
-  onSubmitCreateResident: (values: CreateResidentFormValues) => void;
+  onSubmitCreateResident: (values: CreateResidentSubmitValues) => void;
   onSubmitMoveResident: (values: MoveResidentFormValues) => void;
   onConfirmDeleteResident: () => void;
 }
@@ -82,14 +88,36 @@ export const ResidentFormDialogs = ({
     defaultValues: { floorNumber: '', apartmentNumber: '' },
   });
   const residentCreateForm = useForm<CreateResidentFormValues>({
-    defaultValues: { phone: '', apartmentId: '' },
+    defaultValues: { phone: '', floorNumber: '', apartmentNumber: '' },
   });
   const residentMoveForm = useForm<MoveResidentFormValues>({
     defaultValues: { apartmentId: '' },
   });
+  const selectedFloorNumber = useWatch({
+    control: residentCreateForm.control,
+    name: 'floorNumber',
+  });
+  const availableFloors = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          apartments
+            .map((apartment) => apartment.floorNumber)
+            .filter((floorNumber): floorNumber is number => floorNumber !== null && floorNumber !== undefined)
+        )
+      ).sort((a, b) => a - b),
+    [apartments]
+  );
+  const apartmentsForSelectedFloor = useMemo(
+    () =>
+      selectedFloorNumber
+        ? apartments.filter((apartment) => String(apartment.floorNumber) === selectedFloorNumber)
+        : [],
+    [apartments, selectedFloorNumber]
+  );
 
   // Update edit form when target changes
-  useMemo(() => {
+  useEffect(() => {
     if (apartmentEditTarget) {
       apartmentEditForm.reset({
         floorNumber: String(apartmentEditTarget.floorNumber ?? ''),
@@ -99,11 +127,21 @@ export const ResidentFormDialogs = ({
   }, [apartmentEditTarget]);
 
   // Update move form when target changes
-  useMemo(() => {
+  useEffect(() => {
     if (residentMoveTarget) {
       residentMoveForm.reset({ apartmentId: residentMoveTarget.apartmentId });
     }
   }, [residentMoveTarget]);
+
+  useEffect(() => {
+    if (!isCreateResidentOpen) {
+      residentCreateForm.reset({
+        phone: '',
+        floorNumber: '',
+        apartmentNumber: '',
+      });
+    }
+  }, [isCreateResidentOpen, residentCreateForm]);
 
   const formatApartmentLabel = (apartment: Apartment) => {
     const floor = apartment.floorNumber ?? '-';
@@ -226,7 +264,24 @@ export const ResidentFormDialogs = ({
         open={isCreateResidentOpen}
         onClose={onCloseCreateResident}
         onSubmit={residentCreateForm.handleSubmit((values) => {
-          onSubmitCreateResident(values);
+          const apartment = apartments.find(
+            (item) =>
+              String(item.floorNumber) === values.floorNumber &&
+              item.apartmentNumber === values.apartmentNumber
+          );
+
+          if (!apartment) {
+            residentCreateForm.setError('apartmentNumber', {
+              type: 'validate',
+              message: 'דירה לא נמצאה',
+            });
+            return;
+          }
+
+          onSubmitCreateResident({
+            phone: values.phone,
+            apartmentId: apartment.id,
+          });
           residentCreateForm.reset();
         })}
         isSubmitting={isResidentCreating}
@@ -256,19 +311,60 @@ export const ResidentFormDialogs = ({
             )}
           />
           <Controller
-            name="apartmentId"
+            name="floorNumber"
             control={residentCreateForm.control}
-            rules={{ required: 'דירה נדרשת' }}
+            rules={{ required: 'קומה נדרשת' }}
             render={({ field, fieldState }) => (
               <FormControl fullWidth error={Boolean(fieldState.error)}>
-                <InputLabel>דירה</InputLabel>
-                <Select {...field} label="דירה">
-                  {apartments.map((apartment) => (
-                    <MenuItem key={apartment.id} value={apartment.id}>
+                <InputLabel>קומה</InputLabel>
+                <Select
+                  {...field}
+                  value={field.value ?? ''}
+                  label="קומה"
+                  onChange={(event) => {
+                    field.onChange(event);
+                    residentCreateForm.setValue('apartmentNumber', '');
+                    residentCreateForm.clearErrors('apartmentNumber');
+                  }}
+                >
+                  {availableFloors.map((floorNumber) => (
+                    <MenuItem key={floorNumber} value={String(floorNumber)}>
+                      {floorNumber}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {fieldState.error?.message && (
+                  <Typography variant="caption" color="error">
+                    {fieldState.error.message}
+                  </Typography>
+                )}
+              </FormControl>
+            )}
+          />
+          <Controller
+            name="apartmentNumber"
+            control={residentCreateForm.control}
+            rules={{ required: 'מספר דירה נדרש' }}
+            render={({ field, fieldState }) => (
+              <FormControl fullWidth error={Boolean(fieldState.error)}>
+                <InputLabel>מספר דירה</InputLabel>
+                <Select
+                  {...field}
+                  value={field.value ?? ''}
+                  label="מספר דירה"
+                  disabled={!selectedFloorNumber || apartmentsForSelectedFloor.length === 0}
+                >
+                  {apartmentsForSelectedFloor.map((apartment) => (
+                    <MenuItem key={apartment.id} value={apartment.apartmentNumber}>
                       {formatApartmentLabel(apartment)}
                     </MenuItem>
                   ))}
                 </Select>
+                {fieldState.error?.message && (
+                  <Typography variant="caption" color="error">
+                    {fieldState.error.message}
+                  </Typography>
+                )}
               </FormControl>
             )}
           />
