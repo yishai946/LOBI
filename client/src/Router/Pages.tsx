@@ -151,7 +151,7 @@ const Pages: PageDefinition[] = [
   {
     path: '/residents-apartments',
     element: <ResidentsApartmentsPage />,
-    title: 'דיירים ודירות',
+    title: 'בניין',
     icon: <ApartmentRoundedIcon />,
     visibleInTabsToRoles: [ContextType.MANAGER],
     isProtected: true,

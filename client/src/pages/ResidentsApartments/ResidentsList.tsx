@@ -1,18 +1,31 @@
-import { Resident } from '@entities/Resident';
+import { useMemo } from 'react';
 import { Apartment } from '@entities/Apartment';
-import { TextField, Typography, IconButton, Chip } from '@mui/material';
+import { Resident } from '@entities/Resident';
+import {
+  Chip,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+} from '@mui/material';
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import { Row, Column, Card } from '@components/containers';
-import { useMemo } from 'react';
 
 interface ResidentsListProps {
   residents: Resident[];
   apartments: Apartment[];
   selectedApartmentId: string | null;
+  selectedFloorNumber: string;
+  selectedListApartmentId: string;
   search: string;
   isLoading: boolean;
   canManage: boolean;
+  onFloorChange: (floorNumber: string) => void;
+  onApartmentChange: (apartmentId: string) => void;
   onSearchChange: (search: string) => void;
   onSelectApartment: (apartmentId: string) => void;
   onMoveResident: (resident: Resident) => void;
@@ -29,24 +42,51 @@ export const ResidentsList = ({
   residents,
   apartments,
   selectedApartmentId,
+  selectedFloorNumber,
+  selectedListApartmentId,
   search,
   isLoading,
   canManage,
+  onFloorChange,
+  onApartmentChange,
   onSearchChange,
   onSelectApartment,
   onMoveResident,
   onDeleteResident,
 }: ResidentsListProps) => {
+  const floors = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          apartments
+            .map((apartment) => apartment.floorNumber)
+            .filter((floorNumber): floorNumber is number => floorNumber !== null && floorNumber !== undefined)
+        )
+      ).sort((a, b) => a - b),
+    [apartments]
+  );
+
+  const apartmentsForSelectedFloor = useMemo(
+    () =>
+      selectedFloorNumber
+        ? apartments.filter((apartment) => String(apartment.floorNumber) === selectedFloorNumber)
+        : [],
+    [apartments, selectedFloorNumber]
+  );
+
   const filteredResidents = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return residents;
     return residents.filter((resident) => {
-      const label = formatApartmentLabel(resident.apartment).toLowerCase();
+      const matchesFloor =
+        !selectedFloorNumber || String(resident.apartment.floorNumber) === selectedFloorNumber;
+      const matchesApartment =
+        !selectedListApartmentId || resident.apartmentId === selectedListApartmentId;
       const name = resident.user.name?.toLowerCase() || '';
       const phone = resident.user.phone.toLowerCase();
-      return label.includes(term) || name.includes(term) || phone.includes(term);
+      const matchesSearch = !term || name.includes(term) || phone.includes(term);
+      return matchesFloor && matchesApartment && matchesSearch;
     });
-  }, [residents, search]);
+  }, [residents, search, selectedFloorNumber, selectedListApartmentId]);
 
   return (
     <Card>
@@ -60,14 +100,45 @@ export const ResidentsList = ({
           sx={{ bgcolor: 'rgba(20,184,166,0.12)', fontWeight: 700 }}
         />
       </Row>
-      <TextField
-        placeholder="חיפוש לפי שם, טלפון או דירה"
-        value={search}
-        onChange={(event) => onSearchChange(event.target.value)}
-        size="small"
-        fullWidth
-        sx={{ mb: 2 }}
-      />
+      <Row gap={1.5} direction={{ xs: 'column', sm: 'row' }} sx={{ mb: 2 }}>
+        <FormControl size="small" fullWidth>
+          <InputLabel>קומה</InputLabel>
+          <Select
+            value={selectedFloorNumber}
+            label="קומה"
+            onChange={(event) => onFloorChange(String(event.target.value))}
+          >
+            <MenuItem value="">כל הקומות</MenuItem>
+            {floors.map((floorNumber) => (
+              <MenuItem key={floorNumber} value={String(floorNumber)}>
+                {floorNumber}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl size="small" fullWidth disabled={!selectedFloorNumber}>
+          <InputLabel>דירה</InputLabel>
+          <Select
+            value={selectedListApartmentId}
+            label="דירה"
+            onChange={(event) => onApartmentChange(String(event.target.value))}
+          >
+            <MenuItem value="">כל הדירות</MenuItem>
+            {apartmentsForSelectedFloor.map((apartment) => (
+              <MenuItem key={apartment.id} value={apartment.id}>
+                {formatApartmentLabel(apartment)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          placeholder="חיפוש לפי שם או טלפון"
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          size="small"
+          fullWidth
+        />
+      </Row>
       {isLoading ? (
         <Typography color="text.secondary">טעינה…</Typography>
       ) : filteredResidents.length === 0 ? (

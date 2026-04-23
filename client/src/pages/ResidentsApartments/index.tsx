@@ -35,6 +35,8 @@ export const ResidentsApartmentsPage = () => {
 
   // Dialog state
   const [selectedApartmentId, setSelectedApartmentId] = useState<string | null>(null);
+  const [selectedFloorNumber, setSelectedFloorNumber] = useState<string>('');
+  const [selectedListApartmentId, setSelectedListApartmentId] = useState<string>('');
   const [search, setSearch] = useState('');
   const [isCreateApartmentOpen, setIsCreateApartmentOpen] = useState(false);
   const [apartmentEditTarget, setApartmentEditTarget] = useState<Apartment | null>(null);
@@ -147,9 +149,16 @@ export const ResidentsApartmentsPage = () => {
             residents={residents}
             apartments={apartments}
             selectedApartmentId={selectedApartmentId}
+            selectedFloorNumber={selectedFloorNumber}
+            selectedListApartmentId={selectedListApartmentId}
             search={search}
             isLoading={residentsLoading}
             canManage={canManage}
+            onFloorChange={(floorNumber) => {
+              setSelectedFloorNumber(floorNumber);
+              setSelectedListApartmentId('');
+            }}
+            onApartmentChange={setSelectedListApartmentId}
             onSearchChange={setSearch}
             onSelectApartment={setSelectedApartmentId}
             onMoveResident={setResidentMoveTarget}
