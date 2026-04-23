@@ -10,6 +10,7 @@ import { translateContextType } from '@utils/contextTypeTranslations';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { NotificationBell } from './NotificationBell';
+import MessagesRoundedIcon from '@mui/icons-material/MarkunreadRounded';
 
 export const Header = () => {
   const { currentContext, contexts, logout } = useAuth();
@@ -96,6 +97,11 @@ export const Header = () => {
         </Row>
 
         <Row sx={{ alignItems: 'center', gap: 0.5 }}>
+          {currentContext?.type === 'MANAGER' && (
+            <IconButton onClick={() => navigate('/messages')} color='inherit'>
+              <MessagesRoundedIcon />
+            </IconButton>
+          )}
           <NotificationBell />
         </Row>
 

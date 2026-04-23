@@ -70,7 +70,7 @@ export interface PageDefinition {
   element: ReactNode;
   title?: string;
   icon?: ReactNode;
-  isVisibleInMenu: boolean;
+  visibleInTabsToRoles?: ContextType[];
   isProtected?: boolean;
   allowedRoles?: ContextType[];
   isPublicOnly?: boolean;
@@ -82,14 +82,13 @@ const Pages: PageDefinition[] = [
   {
     path: '/',
     element: <Navigate to="/home" replace />,
-    isVisibleInMenu: false,
   },
   {
     path: '/home',
     element: <HomePage />,
     title: 'בית',
     icon: <HomeRoundedIcon />,
-    isVisibleInMenu: true,
+    visibleInTabsToRoles: [ContextType.RESIDENT, ContextType.MANAGER, ContextType.ADMIN],
     isProtected: true,
     requireContext: true,
   },
@@ -98,19 +97,17 @@ const Pages: PageDefinition[] = [
     element: <PaymentsPage />,
     title: 'תשלומים',
     icon: <PaymentsRoundedIcon />,
-    isVisibleInMenu: true,
+    visibleInTabsToRoles: [ContextType.RESIDENT, ContextType.MANAGER, ContextType.ADMIN],
     isProtected: true,
     requireContext: true,
   },
   {
     path: '/payments/success',
     element: <PaymentSuccessPage />,
-    isVisibleInMenu: false,
   },
   {
     path: '/payments/new',
     element: <PaymentsPage />,
-    isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,
     allowedRoles: [ContextType.MANAGER, ContextType.ADMIN],
@@ -120,21 +117,19 @@ const Pages: PageDefinition[] = [
     element: <IssuesPage />,
     title: 'תקלות',
     icon: <IssuesRoundedIcon />,
-    isVisibleInMenu: true,
+    visibleInTabsToRoles: [ContextType.RESIDENT, ContextType.MANAGER, ContextType.ADMIN],
     isProtected: true,
     requireContext: true,
   },
   {
     path: '/issues/new',
     element: <IssuesPage />,
-    isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,
   },
   {
     path: '/issues/:issueId',
     element: <IssueDetailsPage />,
-    isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,
   },
@@ -143,14 +138,13 @@ const Pages: PageDefinition[] = [
     element: <MessagesPage />,
     title: 'הודעות',
     icon: <MessagesRoundedIcon />,
-    isVisibleInMenu: true,
+    visibleInTabsToRoles: [ContextType.RESIDENT, ContextType.ADMIN],
     isProtected: true,
     requireContext: true,
   },
   {
     path: '/messages/new',
     element: <MessagesPage />,
-    isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,
   },
@@ -159,7 +153,7 @@ const Pages: PageDefinition[] = [
     element: <ResidentsApartmentsPage />,
     title: 'דיירים ודירות',
     icon: <ApartmentRoundedIcon />,
-    isVisibleInMenu: true,
+    visibleInTabsToRoles: [ContextType.MANAGER],
     isProtected: true,
     requireContext: true,
     allowedRoles: [ContextType.MANAGER, ContextType.ADMIN],
@@ -167,54 +161,46 @@ const Pages: PageDefinition[] = [
   {
     path: '/login',
     element: <LoginPage />,
-    isVisibleInMenu: false,
     isPublicOnly: true,
   },
   {
     path: '/otp',
     element: <OtpPage />,
-    isVisibleInMenu: false,
     isPublicOnly: true,
   },
   {
     path: '/complete-profile',
     element: <CompleteProfilePage />,
-    isVisibleInMenu: false,
     isProtected: true,
     redirectIfContextSelected: true,
   },
   {
     path: '/select-context',
     element: <ContextSelectionPage />,
-    isVisibleInMenu: false,
     isProtected: true,
     redirectIfContextSelected: true,
   },
   {
     path: '/unauthorized',
     element: <UnauthorizedPage />,
-    isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,
   },
   {
     path: '/settings/notifications',
     element: <NotificationSettingsPage />,
-    isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,
   },
   {
     path: '/upgrade',
     element: <UpgradePage />,
-    isVisibleInMenu: false,
     isProtected: true,
     requireContext: true,
   },
   {
     path: '*',
     element: <NotFoundPage />,
-    isVisibleInMenu: false,
   },
 ];
 

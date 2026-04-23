@@ -93,7 +93,8 @@ const Tabs = () => {
   const navigationPages = Pages.filter(
     (page) =>
       page.isProtected &&
-      page.isVisibleInMenu &&
+      page.visibleInTabsToRoles &&
+      page.visibleInTabsToRoles.includes(contextType) &&
       (!page.allowedRoles || page.allowedRoles.includes(contextType))
   );
 
