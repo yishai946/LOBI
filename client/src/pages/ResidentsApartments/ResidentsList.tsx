@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Apartment } from '@entities/Apartment';
 import { Resident } from '@entities/Resident';
 import {
@@ -10,9 +10,13 @@ import {
   Select,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import ArrowBackIosNewRoundedIcon from '@mui/icons-material/ArrowBackIosNewRounded';
+import ArrowForwardIosRoundedIcon from '@mui/icons-material/ArrowForwardIosRounded';
 import { Row, Column, Card } from '@components/containers';
 
 interface ResidentsListProps {
@@ -54,6 +58,11 @@ export const ResidentsList = ({
   onMoveResident,
   onDeleteResident,
 }: ResidentsListProps) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const residentsPerPage = isMobile ? 5 : 10;
+  const [page, setPage] = useState(1);
+
   const floors = useMemo(
     () =>
       Array.from(
@@ -87,6 +96,21 @@ export const ResidentsList = ({
       return matchesFloor && matchesApartment && matchesSearch;
     });
   }, [residents, search, selectedFloorNumber, selectedListApartmentId]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredResidents.length / residentsPerPage));
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedFloorNumber, selectedListApartmentId, search]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  const visibleResidents = useMemo(
+    () => filteredResidents.slice((page - 1) * residentsPerPage, page * residentsPerPage),
+    [filteredResidents, page, residentsPerPage]
+  );
 
   return (
     <Card>
@@ -145,7 +169,7 @@ export const ResidentsList = ({
         <Typography color="text.secondary">לא נמצאו תוצאות</Typography>
       ) : (
         <Column gap={1}>
-          {filteredResidents.map((resident) => (
+          {visibleResidents.map((resident) => (
             <Row
               key={resident.id || `${resident.userId}-${resident.apartmentId}`}
               alignItems="center"
@@ -201,6 +225,37 @@ export const ResidentsList = ({
               )}
             </Row>
           ))}
+          {totalPages > 1 && (
+            <Row alignItems="center" justifyContent="space-between" sx={{ pt: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                {`${(page - 1) * residentsPerPage + 1}-${Math.min(
+                  page * residentsPerPage,
+                  filteredResidents.length
+                )} / ${filteredResidents.length}`}
+              </Typography>
+              <Row gap={0.5} alignItems="center">
+                <IconButton
+                  size="small"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page === 1}
+                  aria-label="previous resident page"
+                >
+                  <ArrowForwardIosRoundedIcon fontSize="inherit" />
+                </IconButton>
+                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 44, textAlign: 'center' }}>
+                  {page} / {totalPages}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page === totalPages}
+                  aria-label="next resident page"
+                >
+                  <ArrowBackIosNewRoundedIcon fontSize="inherit" />
+                </IconButton>
+              </Row>
+            </Row>
+          )}
         </Column>
       )}
     </Card>

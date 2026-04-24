@@ -179,6 +179,7 @@ export const IssueDetailsPage = () => {
           sx={{
             p: 2,
             gap: 1.5,
+            alignItems: 'center',
           }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -188,9 +189,10 @@ export const IssueDetailsPage = () => {
           <Row
             sx={{
               display: 'flex',
-              justifyContent: 'center',
+              flexDirection: { xs: 'column', sm: 'row' },
               flexWrap: { sm: 'wrap' },
-              alignItems: { sm: 'flex-start' },
+              alignItems: 'center',
+              justifyContent: 'center',
               gap: 1.25,
             }}
           >
@@ -202,11 +204,12 @@ export const IssueDetailsPage = () => {
                 alt={issue.title}
                 sx={{
                   display: 'block',
+                  width: { xs: '100%', sm: 'auto' },
                   maxWidth: '100%',
                   height: 'auto',
-                  maxHeight: { xs: 220, sm: 360 },
+                  maxHeight: { xs: 260, sm: 360 },
                   borderRadius: 1.5,
-                  objectFit: 'contain',
+                  objectFit: 'cover',
                   border: '1px solid',
                   borderColor: 'divider',
                   boxSizing: 'border-box',

@@ -1,9 +1,19 @@
-import { Box, Chip, Divider, Typography } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Box,
+  Chip,
+  Divider,
+  IconButton,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
+import ArrowBackIosNewRoundedIcon from '@mui/icons-material/ArrowBackIosNewRounded';
+import ArrowForwardIosRoundedIcon from '@mui/icons-material/ArrowForwardIosRounded';
 import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded';
 import { Apartment } from '@entities/Apartment';
 import { Resident } from '@entities/Resident';
 import { Row, Column, Card } from '@components/containers';
-import { useMemo } from 'react';
 
 interface ApartmentGridProps {
   apartments: Apartment[];
@@ -36,6 +46,11 @@ export const ApartmentGrid = ({
   isLoading,
   onSelectApartment,
 }: ApartmentGridProps) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const floorsPerPage = isMobile ? 3 : 5;
+  const [page, setPage] = useState(1);
+
   const residentsByApartment = useMemo(() => {
     return residents.reduce<Record<string, Resident[]>>((acc, resident) => {
       acc[resident.apartmentId] = acc[resident.apartmentId] || [];
@@ -63,6 +78,30 @@ export const ApartmentGrid = ({
       }));
   }, [apartments]);
 
+  const totalPages = Math.max(1, Math.ceil(apartmentsByFloor.length / floorsPerPage));
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    if (!selectedApartmentId || apartmentsByFloor.length === 0) return;
+    const selectedApartment = apartments.find((apartment) => apartment.id === selectedApartmentId);
+    if (!selectedApartment) return;
+
+    const floorIndex = apartmentsByFloor.findIndex(
+      (floor) => floor.floorNumber === selectedApartment.floorNumber
+    );
+    if (floorIndex >= 0) {
+      setPage(Math.floor(floorIndex / floorsPerPage) + 1);
+    }
+  }, [selectedApartmentId, apartments, apartmentsByFloor, floorsPerPage]);
+
+  const visibleFloors = useMemo(
+    () => apartmentsByFloor.slice((page - 1) * floorsPerPage, page * floorsPerPage),
+    [apartmentsByFloor, page, floorsPerPage]
+  );
+
   return (
     <Card sx={{ flex: 1.1, minWidth: { xs: '100%', md: 0 } }}>
       <Row alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
@@ -85,7 +124,7 @@ export const ApartmentGrid = ({
         <Typography color="text.secondary">אין דירות להצגה</Typography>
       ) : (
         <Column gap={2}>
-          {apartmentsByFloor.map((floor) => (
+          {visibleFloors.map((floor) => (
             <Box key={floor.floorNumber} sx={{ mb: 1 }}>
               <Row alignItems="center" gap={1} sx={{ mb: 1 }}>
                 <Typography sx={{ fontWeight: 700 }}>קומה {floor.floorNumber}</Typography>
@@ -153,6 +192,37 @@ export const ApartmentGrid = ({
               </Box>
             </Box>
           ))}
+          {totalPages > 1 && (
+            <Row alignItems="center" justifyContent="space-between" sx={{ pt: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                {`${(page - 1) * floorsPerPage + 1}-${Math.min(
+                  page * floorsPerPage,
+                  apartmentsByFloor.length
+                )} / ${apartmentsByFloor.length}`}
+              </Typography>
+              <Row gap={0.5} alignItems="center">
+                <IconButton
+                  size="small"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page === 1}
+                  aria-label="previous floor page"
+                >
+                  <ArrowForwardIosRoundedIcon fontSize="inherit" />
+                </IconButton>
+                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 44, textAlign: 'center' }}>
+                  {page} / {totalPages}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page === totalPages}
+                  aria-label="next floor page"
+                >
+                  <ArrowBackIosNewRoundedIcon fontSize="inherit" />
+                </IconButton>
+              </Row>
+            </Row>
+          )}
         </Column>
       )}
     </Card>
